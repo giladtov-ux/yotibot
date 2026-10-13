@@ -5,1773 +5,524 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import {
-  useMutation,
-  useQuery
-} from '@tanstack/react-query';
-import type {
-  MutationFunction,
-  QueryFunction,
-  QueryKey,
-  UseMutationOptions,
-  UseMutationResult,
-  UseQueryOptions,
-  UseQueryResult
-} from '@tanstack/react-query';
+import * as zod from 'zod';
 
-import type {
-  CreateEmailTelegramLink200,
-  EmailAccountStatus,
-  GetMiniAppCalendarEventsParams,
-  HealthStatus,
-  HostedPayment,
-  ListShareInput,
-  MiniAppActionInput,
-  MiniAppCalendarEvents,
-  MiniAppCalendarStatus,
-  MiniAppData,
-  MiniAppProfile,
-  MiniAppProfileInput,
-  OpenTasks,
-  RegistrationStatus,
-  SharedLists,
-  TelegramOnboarding,
-  TelegramVerification,
-  WebsiteRegistration
-} from './api.schemas';
-
-import { customFetch } from '../custom-fetch';
-import type { ErrorType , BodyType } from '../custom-fetch';
-
-type AwaitedInput<T> = PromiseLike<T> | T;
-
-      type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
-
-
-type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
-
-
-
-const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKey: K } => {
-  const result = { queryKey } as T & { queryKey: K };
-  for (const key of Object.keys(query)) {
-    // The explicit queryKey always wins, matching the previous
-    // `{ ...query, queryKey }` spread where it was set last.
-    if (key === 'queryKey') continue;
-    Object.defineProperty(result, key, {
-      enumerable: true,
-      configurable: true,
-      get: () => (query as Record<string, unknown>)[key],
-    });
-  }
-  return result;
-};
-
-export const getGetTelegramOnboardingUrl = () => {
-
-
-
-
-  return `/api/onboarding/channels`
-}
 
 /**
  * Public Telegram-only bot connection, without a database or external API lookup.
  */
-export const getTelegramOnboarding = async ( options?: Parameters<typeof customFetch>[1]): Promise<TelegramOnboarding> => {
+export const GetTelegramOnboardingResponse = zod.object({
+  "telegram": zod.object({
+  "available": zod.boolean(),
+  "url": zod.string().url()
+})
+})
 
-  return customFetch<TelegramOnboarding>(getGetTelegramOnboardingUrl(),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
-
-
-
-export const getGetTelegramOnboardingQueryKey = () => {
-    return [
-    `/api/onboarding/channels`
-    ] as const;
-    }
-
-
-export const getGetTelegramOnboardingQueryOptions = <TData = Awaited<ReturnType<typeof getTelegramOnboarding>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTelegramOnboarding>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getGetTelegramOnboardingQueryKey();
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTelegramOnboarding>>> = ({ signal }) => getTelegramOnboarding({ signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTelegramOnboarding>>, TError, TData> & { queryKey: QueryKey }
-}
-
-export type GetTelegramOnboardingQueryResult = NonNullable<Awaited<ReturnType<typeof getTelegramOnboarding>>>
-export type GetTelegramOnboardingQueryError = ErrorType<unknown>
-
-
-
-export function useGetTelegramOnboarding<TData = Awaited<ReturnType<typeof getTelegramOnboarding>>, TError = ErrorType<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTelegramOnboarding>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-
- ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-
-  const queryOptions = getGetTelegramOnboardingQueryOptions(options)
-
-  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-
-
-
-
-
-
-export const getHealthCheckUrl = () => {
-
-
-
-
-  return `/api/healthz`
-}
 
 /**
  * Returns server health status
  * @summary Health check
  */
-export const healthCheck = async ( options?: Parameters<typeof customFetch>[1]): Promise<HealthStatus> => {
+export const HealthCheckResponse = zod.object({
+  "status": zod.string()
+})
 
-  return customFetch<HealthStatus>(getHealthCheckUrl(),
-  {
-    ...options,
-    method: 'GET'
 
+export const registerWebsiteUserBodyTelegramIdRegExp = new RegExp('^[1-9][0-9]{0,15}$');
+export const registerWebsiteUserBodyPhoneMin = 7;
+export const registerWebsiteUserBodyPhoneMax = 25;
 
-  }
-);}
+export const registerWebsiteUserBodyNameMin = 2;
+export const registerWebsiteUserBodyNameMax = 100;
 
+export const registerWebsiteUserBodyEmailMax = 254;
 
 
 
+export const RegisterWebsiteUserBody = zod.object({
+  "telegram_id": zod.string().regex(registerWebsiteUserBodyTelegramIdRegExp),
+  "phone": zod.string().min(registerWebsiteUserBodyPhoneMin).max(registerWebsiteUserBodyPhoneMax),
+  "name": zod.string().min(registerWebsiteUserBodyNameMin).max(registerWebsiteUserBodyNameMax),
+  "email": zod.string().email().max(registerWebsiteUserBodyEmailMax),
+  "plan_tier": zod.enum(['Basic', 'Pro', 'Unlimited'])
+})
 
-export const getHealthCheckQueryKey = () => {
-    return [
-    `/api/healthz`
-    ] as const;
-    }
+export const RegisterWebsiteUserResponse = zod.object({
+  "state": zod.enum(['awaiting_telegram', 'pending_approval', 'ready_for_checkout', 'checkout_pending', 'active', 'expired']),
+  "plan_tier": zod.enum(['Basic', 'Pro', 'Unlimited']),
+  "telegram_url": zod.string().nullable(),
+  "expires_at": zod.coerce.date().nullable(),
+  "billing_available": zod.boolean(),
+  "access_status": zod.string().nullable(),
+  "payment_mode": zod.enum(['test', 'live']),
+  "has_customer": zod.boolean(),
+  "code_sent": zod.boolean()
+})
 
 
-export const getHealthCheckQueryOptions = <TData = Awaited<ReturnType<typeof healthCheck>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof healthCheck>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-) => {
+export const GetWebsiteRegistrationResponse = zod.object({
+  "state": zod.enum(['awaiting_telegram', 'pending_approval', 'ready_for_checkout', 'checkout_pending', 'active', 'expired']),
+  "plan_tier": zod.enum(['Basic', 'Pro', 'Unlimited']),
+  "telegram_url": zod.string().nullable(),
+  "expires_at": zod.coerce.date().nullable(),
+  "billing_available": zod.boolean(),
+  "access_status": zod.string().nullable(),
+  "payment_mode": zod.enum(['test', 'live']),
+  "has_customer": zod.boolean(),
+  "code_sent": zod.boolean()
+})
 
-const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getHealthCheckQueryKey();
+export const ResetWebsiteRegistrationResponse = zod.void()
 
 
+export const verifyWebsiteRegistrationBodyCodeRegExp = new RegExp('^[0-9]{8}$');
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof healthCheck>>> = ({ signal }) => healthCheck({ signal, ...requestOptions });
 
+export const VerifyWebsiteRegistrationBody = zod.object({
+  "code": zod.string().regex(verifyWebsiteRegistrationBodyCodeRegExp)
+})
 
+export const VerifyWebsiteRegistrationResponse = zod.object({
+  "state": zod.enum(['awaiting_telegram', 'pending_approval', 'ready_for_checkout', 'checkout_pending', 'active', 'expired']),
+  "plan_tier": zod.enum(['Basic', 'Pro', 'Unlimited']),
+  "telegram_url": zod.string().nullable(),
+  "expires_at": zod.coerce.date().nullable(),
+  "billing_available": zod.boolean(),
+  "access_status": zod.string().nullable(),
+  "payment_mode": zod.enum(['test', 'live']),
+  "has_customer": zod.boolean(),
+  "code_sent": zod.boolean()
+})
 
 
+export const CreateSubscriptionCheckoutResponse = zod.object({
+  "url": zod.string().url()
+})
 
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof healthCheck>>, TError, TData> & { queryKey: QueryKey }
-}
 
-export type HealthCheckQueryResult = NonNullable<Awaited<ReturnType<typeof healthCheck>>>
-export type HealthCheckQueryError = ErrorType<unknown>
-
-
-/**
- * @summary Health check
- */
-
-export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, TError = ErrorType<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof healthCheck>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-
- ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-
-  const queryOptions = getHealthCheckQueryOptions(options)
-
-  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-
-
-
-
-
-
-export const getRegisterWebsiteUserUrl = () => {
-
-
-
-
-  return `/api/register-user`
-}
-
-export const registerWebsiteUser = async (websiteRegistration: WebsiteRegistration, options?: Parameters<typeof customFetch>[1]): Promise<RegistrationStatus> => {
-
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return customFetch<RegistrationStatus>(getRegisterWebsiteUserUrl(),
-  {
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(websiteRegistration)
-  }
-);}
-
-
-
-
-
-export const getRegisterWebsiteUserMutationKey = () => ['registerWebsiteUser'] as const;
-
-export const getRegisterWebsiteUserMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registerWebsiteUser>>, TError,RegisterWebsiteUserMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof registerWebsiteUser>>, TError,RegisterWebsiteUserMutationVariables, TContext> => {
-
-const mutationKey = getRegisterWebsiteUserMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof registerWebsiteUser>>, RegisterWebsiteUserMutationVariables> = (props) => {
-          const {data} = props ?? {};
-
-          return  registerWebsiteUser(data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type RegisterWebsiteUserMutationResult = NonNullable<Awaited<ReturnType<typeof registerWebsiteUser>>>
-    export type RegisterWebsiteUserMutationBody = BodyType<WebsiteRegistration>
-    export type RegisterWebsiteUserMutationError = ErrorType<unknown>
-    export type RegisterWebsiteUserMutationVariables = {data: BodyType<WebsiteRegistration>}
-
-    export const useRegisterWebsiteUser = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registerWebsiteUser>>, TError,RegisterWebsiteUserMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof registerWebsiteUser>>,
-        TError,
-        RegisterWebsiteUserMutationVariables,
-        TContext
-      > => {
-      return useMutation(getRegisterWebsiteUserMutationOptions(options));
-    }
-
-export const getGetWebsiteRegistrationUrl = () => {
-
-
-
-
-  return `/api/registration`
-}
-
-export const getWebsiteRegistration = async ( options?: Parameters<typeof customFetch>[1]): Promise<RegistrationStatus> => {
-
-  return customFetch<RegistrationStatus>(getGetWebsiteRegistrationUrl(),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
-
-
-
-export const getGetWebsiteRegistrationQueryKey = () => {
-    return [
-    `/api/registration`
-    ] as const;
-    }
-
-
-export const getGetWebsiteRegistrationQueryOptions = <TData = Awaited<ReturnType<typeof getWebsiteRegistration>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWebsiteRegistration>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getGetWebsiteRegistrationQueryKey();
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getWebsiteRegistration>>> = ({ signal }) => getWebsiteRegistration({ signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getWebsiteRegistration>>, TError, TData> & { queryKey: QueryKey }
-}
-
-export type GetWebsiteRegistrationQueryResult = NonNullable<Awaited<ReturnType<typeof getWebsiteRegistration>>>
-export type GetWebsiteRegistrationQueryError = ErrorType<unknown>
-
-
-
-export function useGetWebsiteRegistration<TData = Awaited<ReturnType<typeof getWebsiteRegistration>>, TError = ErrorType<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWebsiteRegistration>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-
- ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-
-  const queryOptions = getGetWebsiteRegistrationQueryOptions(options)
-
-  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-
-
-
-
-
-
-export const getResetWebsiteRegistrationUrl = () => {
-
-
-
-
-  return `/api/registration/reset`
-}
-
-export const resetWebsiteRegistration = async ( options?: Parameters<typeof customFetch>[1]): Promise<void> => {
-
-  return customFetch<void>(getResetWebsiteRegistrationUrl(),
-  {
-    ...options,
-    method: 'POST'
-
-
-  }
-);}
-
-
-
-
-
-export const getResetWebsiteRegistrationMutationKey = () => ['resetWebsiteRegistration'] as const;
-
-export const getResetWebsiteRegistrationMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetWebsiteRegistration>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof resetWebsiteRegistration>>, TError,void, TContext> => {
-
-const mutationKey = getResetWebsiteRegistrationMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resetWebsiteRegistration>>, void> = () => {
-
-
-          return  resetWebsiteRegistration(requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type ResetWebsiteRegistrationMutationResult = NonNullable<Awaited<ReturnType<typeof resetWebsiteRegistration>>>
-
-    export type ResetWebsiteRegistrationMutationError = ErrorType<unknown>
-
-
-    export const useResetWebsiteRegistration = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetWebsiteRegistration>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof resetWebsiteRegistration>>,
-        TError,
-        void,
-        TContext
-      > => {
-      return useMutation(getResetWebsiteRegistrationMutationOptions(options));
-    }
-
-export const getVerifyWebsiteRegistrationUrl = () => {
-
-
-
-
-  return `/api/registration/verify`
-}
-
-export const verifyWebsiteRegistration = async (telegramVerification: TelegramVerification, options?: Parameters<typeof customFetch>[1]): Promise<RegistrationStatus> => {
-
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return customFetch<RegistrationStatus>(getVerifyWebsiteRegistrationUrl(),
-  {
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(telegramVerification)
-  }
-);}
-
-
-
-
-
-export const getVerifyWebsiteRegistrationMutationKey = () => ['verifyWebsiteRegistration'] as const;
-
-export const getVerifyWebsiteRegistrationMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyWebsiteRegistration>>, TError,VerifyWebsiteRegistrationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof verifyWebsiteRegistration>>, TError,VerifyWebsiteRegistrationMutationVariables, TContext> => {
-
-const mutationKey = getVerifyWebsiteRegistrationMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof verifyWebsiteRegistration>>, VerifyWebsiteRegistrationMutationVariables> = (props) => {
-          const {data} = props ?? {};
-
-          return  verifyWebsiteRegistration(data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type VerifyWebsiteRegistrationMutationResult = NonNullable<Awaited<ReturnType<typeof verifyWebsiteRegistration>>>
-    export type VerifyWebsiteRegistrationMutationBody = BodyType<TelegramVerification>
-    export type VerifyWebsiteRegistrationMutationError = ErrorType<unknown>
-    export type VerifyWebsiteRegistrationMutationVariables = {data: BodyType<TelegramVerification>}
-
-    export const useVerifyWebsiteRegistration = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyWebsiteRegistration>>, TError,VerifyWebsiteRegistrationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof verifyWebsiteRegistration>>,
-        TError,
-        VerifyWebsiteRegistrationMutationVariables,
-        TContext
-      > => {
-      return useMutation(getVerifyWebsiteRegistrationMutationOptions(options));
-    }
-
-export const getCreateSubscriptionCheckoutUrl = () => {
-
-
-
-
-  return `/api/checkout`
-}
-
-export const createSubscriptionCheckout = async ( options?: Parameters<typeof customFetch>[1]): Promise<HostedPayment> => {
-
-  return customFetch<HostedPayment>(getCreateSubscriptionCheckoutUrl(),
-  {
-    ...options,
-    method: 'POST'
-
-
-  }
-);}
-
-
-
-
-
-export const getCreateSubscriptionCheckoutMutationKey = () => ['createSubscriptionCheckout'] as const;
-
-export const getCreateSubscriptionCheckoutMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSubscriptionCheckout>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof createSubscriptionCheckout>>, TError,void, TContext> => {
-
-const mutationKey = getCreateSubscriptionCheckoutMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createSubscriptionCheckout>>, void> = () => {
-
-
-          return  createSubscriptionCheckout(requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type CreateSubscriptionCheckoutMutationResult = NonNullable<Awaited<ReturnType<typeof createSubscriptionCheckout>>>
-
-    export type CreateSubscriptionCheckoutMutationError = ErrorType<unknown>
-
-
-    export const useCreateSubscriptionCheckout = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSubscriptionCheckout>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof createSubscriptionCheckout>>,
-        TError,
-        void,
-        TContext
-      > => {
-      return useMutation(getCreateSubscriptionCheckoutMutationOptions(options));
-    }
-
-export const getCreateSubscriptionPortalUrl = () => {
-
-
-
-
-  return `/api/billing/portal`
-}
-
-export const createSubscriptionPortal = async ( options?: Parameters<typeof customFetch>[1]): Promise<HostedPayment> => {
-
-  return customFetch<HostedPayment>(getCreateSubscriptionPortalUrl(),
-  {
-    ...options,
-    method: 'POST'
-
-
-  }
-);}
-
-
-
-
-
-export const getCreateSubscriptionPortalMutationKey = () => ['createSubscriptionPortal'] as const;
-
-export const getCreateSubscriptionPortalMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSubscriptionPortal>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof createSubscriptionPortal>>, TError,void, TContext> => {
-
-const mutationKey = getCreateSubscriptionPortalMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createSubscriptionPortal>>, void> = () => {
-
-
-          return  createSubscriptionPortal(requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type CreateSubscriptionPortalMutationResult = NonNullable<Awaited<ReturnType<typeof createSubscriptionPortal>>>
-
-    export type CreateSubscriptionPortalMutationError = ErrorType<unknown>
-
-
-    export const useCreateSubscriptionPortal = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSubscriptionPortal>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof createSubscriptionPortal>>,
-        TError,
-        void,
-        TContext
-      > => {
-      return useMutation(getCreateSubscriptionPortalMutationOptions(options));
-    }
-
-export const getGetOpenTasksUrl = () => {
-
-
-
-
-  return `/api/tasks`
-}
-
-/**
- * @summary Open tasks only, authorized by Telegram identity and active access
- */
-export const getOpenTasks = async ( options?: Parameters<typeof customFetch>[1]): Promise<OpenTasks> => {
-
-  return customFetch<OpenTasks>(getGetOpenTasksUrl(),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
-
-
-
-export const getGetOpenTasksQueryKey = () => {
-    return [
-    `/api/tasks`
-    ] as const;
-    }
-
-
-export const getGetOpenTasksQueryOptions = <TData = Awaited<ReturnType<typeof getOpenTasks>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOpenTasks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getGetOpenTasksQueryKey();
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOpenTasks>>> = ({ signal }) => getOpenTasks({ signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOpenTasks>>, TError, TData> & { queryKey: QueryKey }
-}
-
-export type GetOpenTasksQueryResult = NonNullable<Awaited<ReturnType<typeof getOpenTasks>>>
-export type GetOpenTasksQueryError = ErrorType<void>
+export const CreateSubscriptionPortalResponse = zod.object({
+  "url": zod.string().url()
+})
 
 
 /**
  * @summary Open tasks only, authorized by Telegram identity and active access
  */
+export const getOpenTasksResponseTasksItemDueAtMin = 0;
+export const getOpenTasksResponseTasksItemDueAtMax = 8640000000000000;
 
-export function useGetOpenTasks<TData = Awaited<ReturnType<typeof getOpenTasks>>, TError = ErrorType<void>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOpenTasks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-
- ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-
-  const queryOptions = getGetOpenTasksQueryOptions(options)
-
-  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
+export const getOpenTasksResponseCountMin = 0;
 
 
 
-
-
-
-
-export const getGetMiniAppDataUrl = () => {
-
-
-
-
-  return `/api/mini-app/data`
-}
-
-/**
- * @summary Telegram-signed, subscription-authorized personal data
- */
-export const getMiniAppData = async ( options?: Parameters<typeof customFetch>[1]): Promise<MiniAppData> => {
-
-  return customFetch<MiniAppData>(getGetMiniAppDataUrl(),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
-
-
-
-export const getGetMiniAppDataQueryKey = () => {
-    return [
-    `/api/mini-app/data`
-    ] as const;
-    }
-
-
-export const getGetMiniAppDataQueryOptions = <TData = Awaited<ReturnType<typeof getMiniAppData>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMiniAppData>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getGetMiniAppDataQueryKey();
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMiniAppData>>> = ({ signal }) => getMiniAppData({ signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMiniAppData>>, TError, TData> & { queryKey: QueryKey }
-}
-
-export type GetMiniAppDataQueryResult = NonNullable<Awaited<ReturnType<typeof getMiniAppData>>>
-export type GetMiniAppDataQueryError = ErrorType<unknown>
+export const GetOpenTasksResponse = zod.object({
+  "tasks": zod.array(zod.object({
+  "id": zod.string(),
+  "listName": zod.string(),
+  "text": zod.string(),
+  "checked": zod.literal(false),
+  "status": zod.enum(['open', 'pending']),
+  "createdAt": zod.number().nullable(),
+  "dueAt": zod.number().min(getOpenTasksResponseTasksItemDueAtMin).max(getOpenTasksResponseTasksItemDueAtMax).nullish()
+})),
+  "count": zod.number().int().min(getOpenTasksResponseCountMin)
+})
 
 
 /**
  * @summary Telegram-signed, subscription-authorized personal data
  */
+export const getMiniAppDataResponseProfileOneNameMax = 100;
+
+export const getMiniAppDataResponseProfileOneTimezoneMax = 80;
+
+export const getMiniAppDataResponseTasksItemDueAtMin = 0;
+export const getMiniAppDataResponseTasksItemDueAtMax = 8640000000000000;
+
+export const getMiniAppDataResponseListsItemItemsItemDueAtMin = 0;
+export const getMiniAppDataResponseListsItemItemsItemDueAtMax = 8640000000000000;
+
+export const getMiniAppDataResponseRemindersItemWeekdaysItemMin = 0;
+export const getMiniAppDataResponseRemindersItemWeekdaysItemMax = 6;
+
+
+
+export const GetMiniAppDataResponse = zod.object({
+  "profile": zod.object({
+  "name": zod.string().min(1).max(getMiniAppDataResponseProfileOneNameMax),
+  "gender": zod.enum(['male', 'female', 'other', 'unspecified']),
+  "language": zod.enum(['he', 'en', 'ar', 'ru']),
+  "timezone": zod.string().max(getMiniAppDataResponseProfileOneTimezoneMax)
+}).and(zod.object({
+  "telegramId": zod.string(),
+  "access": zod.string(),
+  "expiresAt": zod.string().nullable(),
+  "isOwner": zod.boolean()
+})),
+  "tasks": zod.array(zod.object({
+  "id": zod.string(),
+  "listName": zod.string(),
+  "text": zod.string(),
+  "checked": zod.literal(false),
+  "status": zod.enum(['open', 'pending']),
+  "createdAt": zod.number().nullable(),
+  "dueAt": zod.number().min(getMiniAppDataResponseTasksItemDueAtMin).max(getMiniAppDataResponseTasksItemDueAtMax).nullish()
+})).optional().describe('Active tasks only; completed history remains in lists'),
+  "lists": zod.array(zod.object({
+  "name": zod.string(),
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "text": zod.string(),
+  "checked": zod.boolean(),
+  "createdAt": zod.number().nullish(),
+  "dueAt": zod.number().min(getMiniAppDataResponseListsItemItemsItemDueAtMin).max(getMiniAppDataResponseListsItemItemsItemDueAtMax).nullish()
+}))
+})),
+  "reminders": zod.array(zod.object({
+  "id": zod.string(),
+  "text": zod.string(),
+  "dueAt": zod.number(),
+  "createdAt": zod.number(),
+  "sentAt": zod.number().nullable(),
+  "recurring": zod.boolean(),
+  "weekdays": zod.array(zod.number().int().min(getMiniAppDataResponseRemindersItemWeekdaysItemMin).max(getMiniAppDataResponseRemindersItemWeekdaysItemMax)),
+  "hour": zod.number().int().nullable(),
+  "minute": zod.number().int().nullable(),
+  "repeatEveryMs": zod.number().nullable(),
+  "completed": zod.boolean()
+}))
+})
+
+
+export const updateMiniAppProfileBodyNameMax = 100;
+
+export const updateMiniAppProfileBodyTimezoneMax = 80;
+
+
+
+export const UpdateMiniAppProfileBody = zod.object({
+  "name": zod.string().min(1).max(updateMiniAppProfileBodyNameMax),
+  "gender": zod.enum(['male', 'female', 'other', 'unspecified']),
+  "language": zod.enum(['he', 'en', 'ar', 'ru']),
+  "timezone": zod.string().max(updateMiniAppProfileBodyTimezoneMax)
+})
+
+export const updateMiniAppProfileResponseOneNameMax = 100;
+
+export const updateMiniAppProfileResponseOneTimezoneMax = 80;
+
+
+
+export const UpdateMiniAppProfileResponse = zod.object({
+  "name": zod.string().min(1).max(updateMiniAppProfileResponseOneNameMax),
+  "gender": zod.enum(['male', 'female', 'other', 'unspecified']),
+  "language": zod.enum(['he', 'en', 'ar', 'ru']),
+  "timezone": zod.string().max(updateMiniAppProfileResponseOneTimezoneMax)
+}).and(zod.object({
+  "telegramId": zod.string(),
+  "access": zod.string(),
+  "expiresAt": zod.string().nullable(),
+  "isOwner": zod.boolean()
+}))
+
+
+export const runMiniAppActionBodyIdMax = 100;
+
+export const runMiniAppActionBodyListNameMax = 60;
+
+export const runMiniAppActionBodyTextMax = 300;
+
+export const runMiniAppActionBodyDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const runMiniAppActionBodyDueAtMin = 0;
+export const runMiniAppActionBodyDueAtMax = 8640000000000000;
+
+export const runMiniAppActionBodyHourMin = 0;
+export const runMiniAppActionBodyHourMax = 23;
+
+export const runMiniAppActionBodyMinuteMin = 0;
+export const runMiniAppActionBodyMinuteMax = 59;
+
+export const runMiniAppActionBodyWeekdaysItemMin = 0;
+export const runMiniAppActionBodyWeekdaysItemMax = 6;
+
+export const runMiniAppActionBodyWeekdaysMax = 7;
+
+
+
+export const RunMiniAppActionBody = zod.object({
+  "requestId": zod.string().uuid(),
+  "entity": zod.enum(['list', 'item', 'reminder']),
+  "action": zod.enum(['create', 'update', 'delete', 'complete']),
+  "id": zod.string().max(runMiniAppActionBodyIdMax).optional(),
+  "listName": zod.string().min(1).max(runMiniAppActionBodyListNameMax).optional(),
+  "text": zod.string().min(1).max(runMiniAppActionBodyTextMax).optional(),
+  "checked": zod.boolean().optional(),
+  "date": zod.string().regex(runMiniAppActionBodyDateRegExp).optional(),
+  "dueAt": zod.number().min(runMiniAppActionBodyDueAtMin).max(runMiniAppActionBodyDueAtMax).nullish().describe('Optional task deadline; null clears it. Does not create a calendar event.'),
+  "hour": zod.number().int().min(runMiniAppActionBodyHourMin).max(runMiniAppActionBodyHourMax).optional(),
+  "minute": zod.number().int().min(runMiniAppActionBodyMinuteMin).max(runMiniAppActionBodyMinuteMax).optional(),
+  "weekdays": zod.array(zod.number().int().min(runMiniAppActionBodyWeekdaysItemMin).max(runMiniAppActionBodyWeekdaysItemMax)).max(runMiniAppActionBodyWeekdaysMax).optional()
+})
+
+export const runMiniAppActionResponseProfileOneNameMax = 100;
+
+export const runMiniAppActionResponseProfileOneTimezoneMax = 80;
+
+export const runMiniAppActionResponseTasksItemDueAtMin = 0;
+export const runMiniAppActionResponseTasksItemDueAtMax = 8640000000000000;
+
+export const runMiniAppActionResponseListsItemItemsItemDueAtMin = 0;
+export const runMiniAppActionResponseListsItemItemsItemDueAtMax = 8640000000000000;
+
+export const runMiniAppActionResponseRemindersItemWeekdaysItemMin = 0;
+export const runMiniAppActionResponseRemindersItemWeekdaysItemMax = 6;
+
+
+
+export const RunMiniAppActionResponse = zod.object({
+  "profile": zod.object({
+  "name": zod.string().min(1).max(runMiniAppActionResponseProfileOneNameMax),
+  "gender": zod.enum(['male', 'female', 'other', 'unspecified']),
+  "language": zod.enum(['he', 'en', 'ar', 'ru']),
+  "timezone": zod.string().max(runMiniAppActionResponseProfileOneTimezoneMax)
+}).and(zod.object({
+  "telegramId": zod.string(),
+  "access": zod.string(),
+  "expiresAt": zod.string().nullable(),
+  "isOwner": zod.boolean()
+})),
+  "tasks": zod.array(zod.object({
+  "id": zod.string(),
+  "listName": zod.string(),
+  "text": zod.string(),
+  "checked": zod.literal(false),
+  "status": zod.enum(['open', 'pending']),
+  "createdAt": zod.number().nullable(),
+  "dueAt": zod.number().min(runMiniAppActionResponseTasksItemDueAtMin).max(runMiniAppActionResponseTasksItemDueAtMax).nullish()
+})).optional().describe('Active tasks only; completed history remains in lists'),
+  "lists": zod.array(zod.object({
+  "name": zod.string(),
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "text": zod.string(),
+  "checked": zod.boolean(),
+  "createdAt": zod.number().nullish(),
+  "dueAt": zod.number().min(runMiniAppActionResponseListsItemItemsItemDueAtMin).max(runMiniAppActionResponseListsItemItemsItemDueAtMax).nullish()
+}))
+})),
+  "reminders": zod.array(zod.object({
+  "id": zod.string(),
+  "text": zod.string(),
+  "dueAt": zod.number(),
+  "createdAt": zod.number(),
+  "sentAt": zod.number().nullable(),
+  "recurring": zod.boolean(),
+  "weekdays": zod.array(zod.number().int().min(runMiniAppActionResponseRemindersItemWeekdaysItemMin).max(runMiniAppActionResponseRemindersItemWeekdaysItemMax)),
+  "hour": zod.number().int().nullable(),
+  "minute": zod.number().int().nullable(),
+  "repeatEveryMs": zod.number().nullable(),
+  "completed": zod.boolean()
+}))
+})
+
+
+export const GetMiniAppCalendarStatusResponse = zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean()
+})
+
+
+export const ConnectMiniAppCalendarResponse = zod.object({
+  "url": zod.string().url()
+})
+
+
+export const GetMiniAppCalendarEventsQueryParams = zod.object({
+  "start": zod.date(),
+  "end": zod.date()
+})
+
+export const GetMiniAppCalendarEventsResponseItem = zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "start": zod.string(),
+  "end": zod.string(),
+  "allDay": zod.boolean()
+})
+export const GetMiniAppCalendarEventsResponse = zod.array(GetMiniAppCalendarEventsResponseItem)
+
+
+export const DisconnectMiniAppCalendarResponse = zod.void()
+
+
+export const GetEmailAccountResponse = zod.object({
+  "signedIn": zod.boolean(),
+  "verifiedEmail": zod.boolean().optional(),
+  "email": zod.string().optional(),
+  "telegramId": zod.string().nullish(),
+  "hasAccess": zod.boolean().optional()
+})
+
+
+export const CreateEmailTelegramLinkResponse = zod.object({
+  "url": zod.string()
+})
+
+
+export const WatchMiniAppChangesResponse = zod.unknown()
+
+
+export const getMiniAppSharesResponseSharesItemItemsItemDueAtMin = 0;
+export const getMiniAppSharesResponseSharesItemItemsItemDueAtMax = 8640000000000000;
+
+
+
+export const GetMiniAppSharesResponse = zod.object({
+  "shares": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "ownerId": zod.string(),
+  "memberId": zod.string(),
+  "listName": zod.string(),
+  "role": zod.enum(['viewer', 'editor']),
+  "owned": zod.boolean(),
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "text": zod.string(),
+  "checked": zod.boolean(),
+  "createdAt": zod.number().nullish(),
+  "dueAt": zod.number().min(getMiniAppSharesResponseSharesItemItemsItemDueAtMin).max(getMiniAppSharesResponseSharesItemItemsItemDueAtMax).nullish()
+}))
+}))
+})
+
+
+export const createMiniAppShareBodyListNameMax = 60;
+
+export const createMiniAppShareBodyMemberTelegramIdRegExp = new RegExp('^[1-9]\\d{0,19}$');
+
+
+export const CreateMiniAppShareBody = zod.object({
+  "listName": zod.string().min(1).max(createMiniAppShareBodyListNameMax),
+  "memberTelegramId": zod.string().regex(createMiniAppShareBodyMemberTelegramIdRegExp),
+  "role": zod.enum(['viewer', 'editor'])
+})
+
+export const createMiniAppShareResponseSharesItemItemsItemDueAtMin = 0;
+export const createMiniAppShareResponseSharesItemItemsItemDueAtMax = 8640000000000000;
+
+
+
+export const CreateMiniAppShareResponse = zod.object({
+  "shares": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "ownerId": zod.string(),
+  "memberId": zod.string(),
+  "listName": zod.string(),
+  "role": zod.enum(['viewer', 'editor']),
+  "owned": zod.boolean(),
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "text": zod.string(),
+  "checked": zod.boolean(),
+  "createdAt": zod.number().nullish(),
+  "dueAt": zod.number().min(createMiniAppShareResponseSharesItemItemsItemDueAtMin).max(createMiniAppShareResponseSharesItemItemsItemDueAtMax).nullish()
+}))
+}))
+})
+
+
+export const RevokeMiniAppShareParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const revokeMiniAppShareResponseSharesItemItemsItemDueAtMin = 0;
+export const revokeMiniAppShareResponseSharesItemItemsItemDueAtMax = 8640000000000000;
+
+
+
+export const RevokeMiniAppShareResponse = zod.object({
+  "shares": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "ownerId": zod.string(),
+  "memberId": zod.string(),
+  "listName": zod.string(),
+  "role": zod.enum(['viewer', 'editor']),
+  "owned": zod.boolean(),
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "text": zod.string(),
+  "checked": zod.boolean(),
+  "createdAt": zod.number().nullish(),
+  "dueAt": zod.number().min(revokeMiniAppShareResponseSharesItemItemsItemDueAtMin).max(revokeMiniAppShareResponseSharesItemItemsItemDueAtMax).nullish()
+}))
+}))
+})
+
+
+export const RunMiniAppSharedActionParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const runMiniAppSharedActionBodyIdMax = 100;
+
+export const runMiniAppSharedActionBodyListNameMax = 60;
+
+export const runMiniAppSharedActionBodyTextMax = 300;
+
+export const runMiniAppSharedActionBodyDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const runMiniAppSharedActionBodyDueAtMin = 0;
+export const runMiniAppSharedActionBodyDueAtMax = 8640000000000000;
+
+export const runMiniAppSharedActionBodyHourMin = 0;
+export const runMiniAppSharedActionBodyHourMax = 23;
+
+export const runMiniAppSharedActionBodyMinuteMin = 0;
+export const runMiniAppSharedActionBodyMinuteMax = 59;
+
+export const runMiniAppSharedActionBodyWeekdaysItemMin = 0;
+export const runMiniAppSharedActionBodyWeekdaysItemMax = 6;
+
+export const runMiniAppSharedActionBodyWeekdaysMax = 7;
+
+
+
+export const RunMiniAppSharedActionBody = zod.object({
+  "requestId": zod.string().uuid(),
+  "entity": zod.enum(['list', 'item', 'reminder']),
+  "action": zod.enum(['create', 'update', 'delete', 'complete']),
+  "id": zod.string().max(runMiniAppSharedActionBodyIdMax).optional(),
+  "listName": zod.string().min(1).max(runMiniAppSharedActionBodyListNameMax).optional(),
+  "text": zod.string().min(1).max(runMiniAppSharedActionBodyTextMax).optional(),
+  "checked": zod.boolean().optional(),
+  "date": zod.string().regex(runMiniAppSharedActionBodyDateRegExp).optional(),
+  "dueAt": zod.number().min(runMiniAppSharedActionBodyDueAtMin).max(runMiniAppSharedActionBodyDueAtMax).nullish().describe('Optional task deadline; null clears it. Does not create a calendar event.'),
+  "hour": zod.number().int().min(runMiniAppSharedActionBodyHourMin).max(runMiniAppSharedActionBodyHourMax).optional(),
+  "minute": zod.number().int().min(runMiniAppSharedActionBodyMinuteMin).max(runMiniAppSharedActionBodyMinuteMax).optional(),
+  "weekdays": zod.array(zod.number().int().min(runMiniAppSharedActionBodyWeekdaysItemMin).max(runMiniAppSharedActionBodyWeekdaysItemMax)).max(runMiniAppSharedActionBodyWeekdaysMax).optional()
+})
+
+export const runMiniAppSharedActionResponseSharesItemItemsItemDueAtMin = 0;
+export const runMiniAppSharedActionResponseSharesItemItemsItemDueAtMax = 8640000000000000;
+
+
+
+export const RunMiniAppSharedActionResponse = zod.object({
+  "shares": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "ownerId": zod.string(),
+  "memberId": zod.string(),
+  "listName": zod.string(),
+  "role": zod.enum(['viewer', 'editor']),
+  "owned": zod.boolean(),
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "text": zod.string(),
+  "checked": zod.boolean(),
+  "createdAt": zod.number().nullish(),
+  "dueAt": zod.number().min(runMiniAppSharedActionResponseSharesItemItemsItemDueAtMin).max(runMiniAppSharedActionResponseSharesItemItemsItemDueAtMax).nullish()
+}))
+}))
+})
 
-export function useGetMiniAppData<TData = Awaited<ReturnType<typeof getMiniAppData>>, TError = ErrorType<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMiniAppData>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-
- ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-
-  const queryOptions = getGetMiniAppDataQueryOptions(options)
-
-  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-
-
-
-
-
-
-export const getUpdateMiniAppProfileUrl = () => {
-
-
-
-
-  return `/api/mini-app/profile`
-}
-
-export const updateMiniAppProfile = async (miniAppProfileInput: MiniAppProfileInput, options?: Parameters<typeof customFetch>[1]): Promise<MiniAppProfile> => {
-
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return customFetch<MiniAppProfile>(getUpdateMiniAppProfileUrl(),
-  {
-    ...options,
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(miniAppProfileInput)
-  }
-);}
-
-
-
-
-
-export const getUpdateMiniAppProfileMutationKey = () => ['updateMiniAppProfile'] as const;
-
-export const getUpdateMiniAppProfileMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMiniAppProfile>>, TError,UpdateMiniAppProfileMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof updateMiniAppProfile>>, TError,UpdateMiniAppProfileMutationVariables, TContext> => {
-
-const mutationKey = getUpdateMiniAppProfileMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateMiniAppProfile>>, UpdateMiniAppProfileMutationVariables> = (props) => {
-          const {data} = props ?? {};
-
-          return  updateMiniAppProfile(data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type UpdateMiniAppProfileMutationResult = NonNullable<Awaited<ReturnType<typeof updateMiniAppProfile>>>
-    export type UpdateMiniAppProfileMutationBody = BodyType<MiniAppProfileInput>
-    export type UpdateMiniAppProfileMutationError = ErrorType<unknown>
-    export type UpdateMiniAppProfileMutationVariables = {data: BodyType<MiniAppProfileInput>}
-
-    export const useUpdateMiniAppProfile = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMiniAppProfile>>, TError,UpdateMiniAppProfileMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof updateMiniAppProfile>>,
-        TError,
-        UpdateMiniAppProfileMutationVariables,
-        TContext
-      > => {
-      return useMutation(getUpdateMiniAppProfileMutationOptions(options));
-    }
-
-export const getRunMiniAppActionUrl = () => {
-
-
-
-
-  return `/api/mini-app/action`
-}
-
-export const runMiniAppAction = async (miniAppActionInput: MiniAppActionInput, options?: Parameters<typeof customFetch>[1]): Promise<MiniAppData> => {
-
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return customFetch<MiniAppData>(getRunMiniAppActionUrl(),
-  {
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(miniAppActionInput)
-  }
-);}
-
-
-
-
-
-export const getRunMiniAppActionMutationKey = () => ['runMiniAppAction'] as const;
-
-export const getRunMiniAppActionMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof runMiniAppAction>>, TError,RunMiniAppActionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof runMiniAppAction>>, TError,RunMiniAppActionMutationVariables, TContext> => {
-
-const mutationKey = getRunMiniAppActionMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof runMiniAppAction>>, RunMiniAppActionMutationVariables> = (props) => {
-          const {data} = props ?? {};
-
-          return  runMiniAppAction(data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type RunMiniAppActionMutationResult = NonNullable<Awaited<ReturnType<typeof runMiniAppAction>>>
-    export type RunMiniAppActionMutationBody = BodyType<MiniAppActionInput>
-    export type RunMiniAppActionMutationError = ErrorType<unknown>
-    export type RunMiniAppActionMutationVariables = {data: BodyType<MiniAppActionInput>}
-
-    export const useRunMiniAppAction = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof runMiniAppAction>>, TError,RunMiniAppActionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof runMiniAppAction>>,
-        TError,
-        RunMiniAppActionMutationVariables,
-        TContext
-      > => {
-      return useMutation(getRunMiniAppActionMutationOptions(options));
-    }
-
-export const getGetMiniAppCalendarStatusUrl = () => {
-
-
-
-
-  return `/api/mini-app/calendar/status`
-}
-
-export const getMiniAppCalendarStatus = async ( options?: Parameters<typeof customFetch>[1]): Promise<MiniAppCalendarStatus> => {
-
-  return customFetch<MiniAppCalendarStatus>(getGetMiniAppCalendarStatusUrl(),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
-
-
-
-export const getGetMiniAppCalendarStatusQueryKey = () => {
-    return [
-    `/api/mini-app/calendar/status`
-    ] as const;
-    }
-
-
-export const getGetMiniAppCalendarStatusQueryOptions = <TData = Awaited<ReturnType<typeof getMiniAppCalendarStatus>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMiniAppCalendarStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getGetMiniAppCalendarStatusQueryKey();
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMiniAppCalendarStatus>>> = ({ signal }) => getMiniAppCalendarStatus({ signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMiniAppCalendarStatus>>, TError, TData> & { queryKey: QueryKey }
-}
-
-export type GetMiniAppCalendarStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getMiniAppCalendarStatus>>>
-export type GetMiniAppCalendarStatusQueryError = ErrorType<unknown>
-
-
-
-export function useGetMiniAppCalendarStatus<TData = Awaited<ReturnType<typeof getMiniAppCalendarStatus>>, TError = ErrorType<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMiniAppCalendarStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-
- ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-
-  const queryOptions = getGetMiniAppCalendarStatusQueryOptions(options)
-
-  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-
-
-
-
-
-
-export const getConnectMiniAppCalendarUrl = () => {
-
-
-
-
-  return `/api/mini-app/calendar/connect`
-}
-
-export const connectMiniAppCalendar = async ( options?: Parameters<typeof customFetch>[1]): Promise<HostedPayment> => {
-
-  return customFetch<HostedPayment>(getConnectMiniAppCalendarUrl(),
-  {
-    ...options,
-    method: 'POST'
-
-
-  }
-);}
-
-
-
-
-
-export const getConnectMiniAppCalendarMutationKey = () => ['connectMiniAppCalendar'] as const;
-
-export const getConnectMiniAppCalendarMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof connectMiniAppCalendar>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof connectMiniAppCalendar>>, TError,void, TContext> => {
-
-const mutationKey = getConnectMiniAppCalendarMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof connectMiniAppCalendar>>, void> = () => {
-
-
-          return  connectMiniAppCalendar(requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type ConnectMiniAppCalendarMutationResult = NonNullable<Awaited<ReturnType<typeof connectMiniAppCalendar>>>
-
-    export type ConnectMiniAppCalendarMutationError = ErrorType<unknown>
-
-
-    export const useConnectMiniAppCalendar = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof connectMiniAppCalendar>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof connectMiniAppCalendar>>,
-        TError,
-        void,
-        TContext
-      > => {
-      return useMutation(getConnectMiniAppCalendarMutationOptions(options));
-    }
-
-export const getGetMiniAppCalendarEventsUrl = (params: GetMiniAppCalendarEventsParams,) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : String(value))
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0 ? `/api/mini-app/calendar/events?${stringifiedParams}` : `/api/mini-app/calendar/events`
-}
-
-export const getMiniAppCalendarEvents = async (params: GetMiniAppCalendarEventsParams, options?: Parameters<typeof customFetch>[1]): Promise<MiniAppCalendarEvents> => {
-
-  return customFetch<MiniAppCalendarEvents>(getGetMiniAppCalendarEventsUrl(params),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
-
-
-
-export const getGetMiniAppCalendarEventsQueryKey = (params?: GetMiniAppCalendarEventsParams,) => {
-    return [
-    `/api/mini-app/calendar/events`, ...(params ? [params] : [])
-    ] as const;
-    }
-
-
-export const getGetMiniAppCalendarEventsQueryOptions = <TData = Awaited<ReturnType<typeof getMiniAppCalendarEvents>>, TError = ErrorType<unknown>>(params: GetMiniAppCalendarEventsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMiniAppCalendarEvents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getGetMiniAppCalendarEventsQueryKey(params);
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMiniAppCalendarEvents>>> = ({ signal }) => getMiniAppCalendarEvents(params, { signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMiniAppCalendarEvents>>, TError, TData> & { queryKey: QueryKey }
-}
-
-export type GetMiniAppCalendarEventsQueryResult = NonNullable<Awaited<ReturnType<typeof getMiniAppCalendarEvents>>>
-export type GetMiniAppCalendarEventsQueryError = ErrorType<unknown>
-
-
-
-export function useGetMiniAppCalendarEvents<TData = Awaited<ReturnType<typeof getMiniAppCalendarEvents>>, TError = ErrorType<unknown>>(
- params: GetMiniAppCalendarEventsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMiniAppCalendarEvents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-
- ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-
-  const queryOptions = getGetMiniAppCalendarEventsQueryOptions(params,options)
-
-  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-
-
-
-
-
-
-export const getDisconnectMiniAppCalendarUrl = () => {
-
-
-
-
-  return `/api/mini-app/calendar/disconnect`
-}
-
-export const disconnectMiniAppCalendar = async ( options?: Parameters<typeof customFetch>[1]): Promise<void> => {
-
-  return customFetch<void>(getDisconnectMiniAppCalendarUrl(),
-  {
-    ...options,
-    method: 'POST'
-
-
-  }
-);}
-
-
-
-
-
-export const getDisconnectMiniAppCalendarMutationKey = () => ['disconnectMiniAppCalendar'] as const;
-
-export const getDisconnectMiniAppCalendarMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof disconnectMiniAppCalendar>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof disconnectMiniAppCalendar>>, TError,void, TContext> => {
-
-const mutationKey = getDisconnectMiniAppCalendarMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof disconnectMiniAppCalendar>>, void> = () => {
-
-
-          return  disconnectMiniAppCalendar(requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type DisconnectMiniAppCalendarMutationResult = NonNullable<Awaited<ReturnType<typeof disconnectMiniAppCalendar>>>
-
-    export type DisconnectMiniAppCalendarMutationError = ErrorType<unknown>
-
-
-    export const useDisconnectMiniAppCalendar = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof disconnectMiniAppCalendar>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof disconnectMiniAppCalendar>>,
-        TError,
-        void,
-        TContext
-      > => {
-      return useMutation(getDisconnectMiniAppCalendarMutationOptions(options));
-    }
-
-export const getGetEmailAccountUrl = () => {
-
-
-
-
-  return `/api/email-auth/me`
-}
-
-export const getEmailAccount = async ( options?: Parameters<typeof customFetch>[1]): Promise<EmailAccountStatus> => {
-
-  return customFetch<EmailAccountStatus>(getGetEmailAccountUrl(),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
-
-
-
-export const getGetEmailAccountQueryKey = () => {
-    return [
-    `/api/email-auth/me`
-    ] as const;
-    }
-
-
-export const getGetEmailAccountQueryOptions = <TData = Awaited<ReturnType<typeof getEmailAccount>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEmailAccount>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getGetEmailAccountQueryKey();
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getEmailAccount>>> = ({ signal }) => getEmailAccount({ signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getEmailAccount>>, TError, TData> & { queryKey: QueryKey }
-}
-
-export type GetEmailAccountQueryResult = NonNullable<Awaited<ReturnType<typeof getEmailAccount>>>
-export type GetEmailAccountQueryError = ErrorType<unknown>
-
-
-
-export function useGetEmailAccount<TData = Awaited<ReturnType<typeof getEmailAccount>>, TError = ErrorType<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEmailAccount>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-
- ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-
-  const queryOptions = getGetEmailAccountQueryOptions(options)
-
-  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-
-
-
-
-
-
-export const getCreateEmailTelegramLinkUrl = () => {
-
-
-
-
-  return `/api/email-auth/link`
-}
-
-export const createEmailTelegramLink = async ( options?: Parameters<typeof customFetch>[1]): Promise<CreateEmailTelegramLink200> => {
-
-  return customFetch<CreateEmailTelegramLink200>(getCreateEmailTelegramLinkUrl(),
-  {
-    ...options,
-    method: 'POST'
-
-
-  }
-);}
-
-
-
-
-
-export const getCreateEmailTelegramLinkMutationKey = () => ['createEmailTelegramLink'] as const;
-
-export const getCreateEmailTelegramLinkMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createEmailTelegramLink>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof createEmailTelegramLink>>, TError,void, TContext> => {
-
-const mutationKey = getCreateEmailTelegramLinkMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createEmailTelegramLink>>, void> = () => {
-
-
-          return  createEmailTelegramLink(requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type CreateEmailTelegramLinkMutationResult = NonNullable<Awaited<ReturnType<typeof createEmailTelegramLink>>>
-
-    export type CreateEmailTelegramLinkMutationError = ErrorType<unknown>
-
-
-    export const useCreateEmailTelegramLink = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createEmailTelegramLink>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof createEmailTelegramLink>>,
-        TError,
-        void,
-        TContext
-      > => {
-      return useMutation(getCreateEmailTelegramLinkMutationOptions(options));
-    }
-
-export const getWatchMiniAppChangesUrl = () => {
-
-
-
-
-  return `/api/mini-app/changes`
-}
-
-export const watchMiniAppChanges = async ( options?: Parameters<typeof customFetch>[1]): Promise<string> => {
-
-  return customFetch<string>(getWatchMiniAppChangesUrl(),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
-
-
-
-export const getWatchMiniAppChangesQueryKey = () => {
-    return [
-    `/api/mini-app/changes`
-    ] as const;
-    }
-
-
-export const getWatchMiniAppChangesQueryOptions = <TData = Awaited<ReturnType<typeof watchMiniAppChanges>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof watchMiniAppChanges>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getWatchMiniAppChangesQueryKey();
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof watchMiniAppChanges>>> = ({ signal }) => watchMiniAppChanges({ signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof watchMiniAppChanges>>, TError, TData> & { queryKey: QueryKey }
-}
-
-export type WatchMiniAppChangesQueryResult = NonNullable<Awaited<ReturnType<typeof watchMiniAppChanges>>>
-export type WatchMiniAppChangesQueryError = ErrorType<unknown>
-
-
-
-export function useWatchMiniAppChanges<TData = Awaited<ReturnType<typeof watchMiniAppChanges>>, TError = ErrorType<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof watchMiniAppChanges>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-
- ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-
-  const queryOptions = getWatchMiniAppChangesQueryOptions(options)
-
-  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-
-
-
-
-
-
-export const getGetMiniAppSharesUrl = () => {
-
-
-
-
-  return `/api/mini-app/shares`
-}
-
-export const getMiniAppShares = async ( options?: Parameters<typeof customFetch>[1]): Promise<SharedLists> => {
-
-  return customFetch<SharedLists>(getGetMiniAppSharesUrl(),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
-
-
-
-export const getGetMiniAppSharesQueryKey = () => {
-    return [
-    `/api/mini-app/shares`
-    ] as const;
-    }
-
-
-export const getGetMiniAppSharesQueryOptions = <TData = Awaited<ReturnType<typeof getMiniAppShares>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMiniAppShares>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getGetMiniAppSharesQueryKey();
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMiniAppShares>>> = ({ signal }) => getMiniAppShares({ signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMiniAppShares>>, TError, TData> & { queryKey: QueryKey }
-}
-
-export type GetMiniAppSharesQueryResult = NonNullable<Awaited<ReturnType<typeof getMiniAppShares>>>
-export type GetMiniAppSharesQueryError = ErrorType<unknown>
-
-
-
-export function useGetMiniAppShares<TData = Awaited<ReturnType<typeof getMiniAppShares>>, TError = ErrorType<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMiniAppShares>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-
- ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-
-  const queryOptions = getGetMiniAppSharesQueryOptions(options)
-
-  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-
-
-
-
-
-
-export const getCreateMiniAppShareUrl = () => {
-
-
-
-
-  return `/api/mini-app/shares`
-}
-
-export const createMiniAppShare = async (listShareInput: ListShareInput, options?: Parameters<typeof customFetch>[1]): Promise<SharedLists> => {
-
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return customFetch<SharedLists>(getCreateMiniAppShareUrl(),
-  {
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(listShareInput)
-  }
-);}
-
-
-
-
-
-export const getCreateMiniAppShareMutationKey = () => ['createMiniAppShare'] as const;
-
-export const getCreateMiniAppShareMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMiniAppShare>>, TError,CreateMiniAppShareMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof createMiniAppShare>>, TError,CreateMiniAppShareMutationVariables, TContext> => {
-
-const mutationKey = getCreateMiniAppShareMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createMiniAppShare>>, CreateMiniAppShareMutationVariables> = (props) => {
-          const {data} = props ?? {};
-
-          return  createMiniAppShare(data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type CreateMiniAppShareMutationResult = NonNullable<Awaited<ReturnType<typeof createMiniAppShare>>>
-    export type CreateMiniAppShareMutationBody = BodyType<ListShareInput>
-    export type CreateMiniAppShareMutationError = ErrorType<unknown>
-    export type CreateMiniAppShareMutationVariables = {data: BodyType<ListShareInput>}
-
-    export const useCreateMiniAppShare = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMiniAppShare>>, TError,CreateMiniAppShareMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof createMiniAppShare>>,
-        TError,
-        CreateMiniAppShareMutationVariables,
-        TContext
-      > => {
-      return useMutation(getCreateMiniAppShareMutationOptions(options));
-    }
-
-export const getRevokeMiniAppShareUrl = (id: string,) => {
-
-
-
-
-  return `/api/mini-app/shares/${id}`
-}
-
-export const revokeMiniAppShare = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<SharedLists> => {
-
-  return customFetch<SharedLists>(getRevokeMiniAppShareUrl(id),
-  {
-    ...options,
-    method: 'DELETE'
-
-
-  }
-);}
-
-
-
-
-
-export const getRevokeMiniAppShareMutationKey = () => ['revokeMiniAppShare'] as const;
-
-export const getRevokeMiniAppShareMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokeMiniAppShare>>, TError,RevokeMiniAppShareMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof revokeMiniAppShare>>, TError,RevokeMiniAppShareMutationVariables, TContext> => {
-
-const mutationKey = getRevokeMiniAppShareMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof revokeMiniAppShare>>, RevokeMiniAppShareMutationVariables> = (props) => {
-          const {id} = props ?? {};
-
-          return  revokeMiniAppShare(id,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type RevokeMiniAppShareMutationResult = NonNullable<Awaited<ReturnType<typeof revokeMiniAppShare>>>
-
-    export type RevokeMiniAppShareMutationError = ErrorType<unknown>
-    export type RevokeMiniAppShareMutationVariables = {id: string}
-
-    export const useRevokeMiniAppShare = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokeMiniAppShare>>, TError,RevokeMiniAppShareMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof revokeMiniAppShare>>,
-        TError,
-        RevokeMiniAppShareMutationVariables,
-        TContext
-      > => {
-      return useMutation(getRevokeMiniAppShareMutationOptions(options));
-    }
-
-export const getRunMiniAppSharedActionUrl = (id: string,) => {
-
-
-
-
-  return `/api/mini-app/shares/${id}/action`
-}
-
-export const runMiniAppSharedAction = async (id: string,
-    miniAppActionInput: MiniAppActionInput, options?: Parameters<typeof customFetch>[1]): Promise<SharedLists> => {
-
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return customFetch<SharedLists>(getRunMiniAppSharedActionUrl(id),
-  {
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(miniAppActionInput)
-  }
-);}
-
-
-
-
-
-export const getRunMiniAppSharedActionMutationKey = () => ['runMiniAppSharedAction'] as const;
-
-export const getRunMiniAppSharedActionMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof runMiniAppSharedAction>>, TError,RunMiniAppSharedActionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof runMiniAppSharedAction>>, TError,RunMiniAppSharedActionMutationVariables, TContext> => {
-
-const mutationKey = getRunMiniAppSharedActionMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof runMiniAppSharedAction>>, RunMiniAppSharedActionMutationVariables> = (props) => {
-          const {id,data} = props ?? {};
-
-          return  runMiniAppSharedAction(id,data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type RunMiniAppSharedActionMutationResult = NonNullable<Awaited<ReturnType<typeof runMiniAppSharedAction>>>
-    export type RunMiniAppSharedActionMutationBody = BodyType<MiniAppActionInput>
-    export type RunMiniAppSharedActionMutationError = ErrorType<unknown>
-    export type RunMiniAppSharedActionMutationVariables = {id: string;data: BodyType<MiniAppActionInput>}
-
-    export const useRunMiniAppSharedAction = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof runMiniAppSharedAction>>, TError,RunMiniAppSharedActionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof runMiniAppSharedAction>>,
-        TError,
-        RunMiniAppSharedActionMutationVariables,
-        TContext
-      > => {
-      return useMutation(getRunMiniAppSharedActionMutationOptions(options));
-    }
 
