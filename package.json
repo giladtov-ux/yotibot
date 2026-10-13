@@ -1,5 +1,5 @@
 {
-  "name": "iot-bots",
+  "name": "yoti-bot",
   "version": "1.0.0",
   "description": "Yoti Telegram Bot",
   "main": "index.js",
@@ -8,7 +8,8 @@
     "start": "node index.js"
   },
   "dependencies": {
+    "dotenv": "^16.4.5",
     "node-telegram-bot-api": "^0.66.0",
-    "dotenv": "^16.4.5"
+    "pg": "^8.11.3"
   }
 }
