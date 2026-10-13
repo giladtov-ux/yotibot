@@ -1,12 +1,20 @@
 {
-  "name": "@workspace/api-zod",
-  "version": "0.0.0",
+  "name": "@workspace/ah-sheli-bot",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
-  "exports": {
-    ".": "./src/index.ts"
+  "description": "A Hebrew AI personal assistant for Telegram with PostgreSQL-backed reminders.",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "connect-owner": "node src/connect-owner.js",
+    "start": "node index.js",
+    "check": "for file in index.js src/*.js src/lib/*.ts; do node --check \"$file\" || exit; done",
+    "test": "node --test"
   },
   "dependencies": {
-    "zod": "catalog:"
+    "node-schedule": "^2.1.1",
+    "pg": "^8.23.1"
   }
 }
