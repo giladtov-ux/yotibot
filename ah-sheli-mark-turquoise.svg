@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="אח שלי">
+  <rect width="128" height="128" rx="30" fill="#0c2241"/>
+  <path d="M35 35c-11 0-20 9-20 20v18c0 11 9 20 20 20h4v15l18-15h36c11 0 20-9 20-20V55c0-11-9-20-20-20H35Z"
+        fill="#24e5d0" fill-opacity=".13" stroke="#24e5d0" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M39 46h50c8 0 14 6 14 14v13c0 8-6 14-14 14H57L43 99V87c-10-1-18-7-18-17V60c0-8 6-14 14-14Z"
+        fill="#10294b" stroke="#24e5d0" stroke-width="4" stroke-linejoin="round"/>
+  <circle cx="50" cy="65" r="3.5" fill="#24e5d0"/>
+  <circle cx="77" cy="65" r="3.5" fill="#24e5d0"/>
+  <path d="M49 75c7 8 22 8 29 0" fill="none" stroke="#24e5d0" stroke-width="4" stroke-linecap="round"/>
+</svg>

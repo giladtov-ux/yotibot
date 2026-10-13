@@ -1,0 +1,173 @@
+#personal-area {
+  scroll-margin-top: 100px;
+}
+/* Namespaced channel selector: isolated from the demo, billing, and app controls. */
+.onboard-email-hidden {
+  display: none !important;
+}
+
+.onboard-chooser {
+  width: 100%;
+  min-width: 0;
+  color: var(--ink, #f3f7f4);
+  direction: rtl;
+  text-align: right;
+}
+
+.onboard-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 5px;
+  border: 1px solid var(--line, #365442);
+  border-radius: 12px;
+  background: var(--paper, #07152b);
+}
+
+.onboard-tab {
+  flex: 1 1 0;
+  min-height: 44px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 9px 12px;
+  background: transparent;
+  color: var(--muted, #b4c5ba);
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.onboard-tab[aria-selected="true"] {
+  border-color: var(--forest, #0c2241);
+  background: var(--soft, #10294b);
+  color: var(--ink, #f3f7f4);
+}
+
+.onboard-tab:focus-visible,
+.onboard-action:focus-visible,
+.onboard-retry:focus-visible,
+.onboard-close:focus-visible,
+.onboard-dialog button:focus-visible {
+  outline: 2px solid var(--teal, #24e5d0);
+  outline-offset: 3px;
+}
+
+.onboard-channel-panel {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  padding-top: 16px;
+}
+
+.onboard-channel-panel[hidden] {
+  display: none;
+}
+
+.onboard-status,
+.onboard-note {
+  margin: 0;
+  color: var(--muted, #b4c5ba);
+  font-size: 0.94rem;
+  line-height: 1.65;
+}
+
+.onboard-status[role="alert"] {
+  color: #f1b5a9;
+}
+
+.onboard-action,
+.onboard-retry {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  border: 1px solid var(--line, rgba(169,209,250,.24));
+  border-radius: 999px;
+  padding: 10px 16px;
+  font: inherit;
+  font-weight: 800;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.onboard-action-primary,
+.onboard-retry {
+  background: var(--teal, #24e5d0);
+  border-color: var(--teal, #24e5d0);
+  color: #062638;
+}
+
+.onboard-action-secondary {
+  background: var(--soft, #10294b);
+  color: var(--ink, #f3f7f4);
+}
+
+.onboard-action:hover,
+.onboard-retry:hover {
+  background: #63f2e2;
+  color: #062638;
+}
+
+.onboard-dialog {
+  width: min(92vw, 480px);
+  max-width: 480px;
+  max-height: min(88dvh, 760px);
+  overflow: auto;
+  border: 1px solid var(--line, #365442);
+  border-radius: 18px;
+  padding: 0;
+  background: var(--paper, #07152b);
+  color: var(--ink, #f3f7f4);
+  box-shadow: 0 18px 70px #0009;
+}
+
+.onboard-dialog::backdrop {
+  background: #050906d9;
+}
+
+.onboard-dialog-shell {
+  padding: 20px;
+}
+
+.onboard-dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.onboard-dialog-head h2 {
+  margin: 0;
+  color: var(--ink, #f3f7f4);
+  font-size: 1.25rem;
+}
+
+.onboard-close {
+  min-height: 40px;
+  border: 1px solid var(--line, #365442);
+  border-radius: 8px;
+  padding: 7px 12px;
+  background: var(--panel, #0c2241);
+  color: var(--ink, #f3f7f4);
+  font: inherit;
+  cursor: pointer;
+}
+
+.onboard-mini-app .onboard-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+@media (max-width: 680px) {
+  .onboard-dialog {
+    width: calc(100vw - 24px);
+    max-height: 90dvh;
+    border-radius: 16px;
+  }
+
+  .onboard-dialog-shell {
+    padding: 16px;
+  }
+}

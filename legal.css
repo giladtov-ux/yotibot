@@ -1,0 +1,7 @@
+@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800;900&display=swap');
+@import url('./brand-colors.css');
+:root{font-family:'Heebo',Arial,sans-serif;color:var(--ink);background:var(--paper);color-scheme:dark}
+*{box-sizing:border-box}body{margin:0;padding:28px 20px max(28px,env(safe-area-inset-bottom))}
+main{max-width:760px;margin:auto;background:var(--panel);border:1px solid rgba(168,206,255,.3);border-radius:24px;padding:26px}
+a{color:var(--teal);text-decoration-thickness:2px}h1{font-size:30px;margin-top:0}h2{font-size:20px;margin-top:28px}
+p,li{line-height:1.8}.back{display:inline-block;padding:12px 18px;border:1px solid transparent;border-radius:99px;background:var(--teal);color:#062838;text-decoration:none}
