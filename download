@@ -1,0 +1,57 @@
+modules = ["nodejs-24", "python-base-3.13", "postgresql-16"]
+
+[deployment]
+router = "application"
+deploymentTarget = "autoscale"
+
+[deployment.postBuild]
+args = ["pnpm", "store", "prune"]
+env = { "CI" = "true" }
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Ah Sheli Telegram Bot"
+
+[[workflows.workflow]]
+name = "Ah Sheli Telegram Bot"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/ah-sheli-bot run start"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[agent]
+stack = "PNPM_WORKSPACE"
+expertMode = true
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 20000
+
+[nix]
+channel = "stable-25_05"
+packages = ["chromium"]
+
+[userenv]
+
+[userenv.shared]
+WHOP_COMPANY_ID = "biz_fOfuVJJlxKJZgX"
+WHOP_PRO_PLAN_ID = "plan_uzT6M3ogjIAcB"
+WHOP_UNLIMITED_PLAN_ID = "plan_WVJt5MzjzyOgL"
+
+[userenv.production]
+TELEGRAM_WEBHOOK_URL = "https://ah-sheli-telegram-bot.replit.app/api/public/telegram/webhook"
+SELF_KEEP_ALIVE_URL = "https://ah-sheli-telegram-bot.replit.app"
+GOOGLE_CALENDAR_REDIRECT_URI = "https://ah-sheli-telegram-bot.replit.app/api/mini-app/calendar/callback"
+PUBLIC_APP_URL = "https://ah-sheli-telegram-bot.replit.app"

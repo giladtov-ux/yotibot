@@ -1,0 +1,43 @@
+# Preparation only. The start command refuses activation until cutover approval.
+# One web service supervises the existing Telegram worker; do not add a second.
+services:
+  - type: web
+    name: ah-sheli
+    runtime: node
+    plan: 0.5c-512mb
+    numInstances: 1
+    autoDeployTrigger: "off"
+    buildCommand: npm install --global pnpm@10.26.1 && pnpm install --frozen-lockfile --prod=false && pnpm --filter @workspace/api-server run build
+    startCommand: node scripts/cloud-start.mjs
+    healthCheckPath: /api/healthz
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: TZ
+        value: Asia/Jerusalem
+      - key: CLOUD_CUTOVER_APPROVED
+        value: "0"
+      - key: PUBLIC_APP_URL
+        value: https://ah-sheli-telegram-bot.replit.app
+      - key: GOOGLE_CALENDAR_REDIRECT_URI
+        value: https://ah-sheli-telegram-bot.replit.app/api/mini-app/calendar/callback
+      - key: DATABASE_URL
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_WEBHOOK_URL
+        sync: false
+      - key: SESSION_SECRET
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: CLERK_PUBLISHABLE_KEY
+        sync: false
+      - key: GOOGLE_CALENDAR_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CALENDAR_CLIENT_SECRET
+        sync: false
