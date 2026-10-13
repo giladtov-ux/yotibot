@@ -1,0 +1,1 @@
+{"version":3,"file":"emailAccountStatus.d.ts","sourceRoot":"","sources":["../../../src/generated/types/emailAccountStatus.ts"],"names":[],"mappings":"AAAA;;;;;;GAMG;AAEH,MAAM,WAAW,kBAAkB;IACjC,QAAQ,EAAE,OAAO,CAAC;IAClB,aAAa,CAAC,EAAE,OAAO,CAAC;IACxB,KAAK,CAAC,EAAE,MAAM,CAAC;IACf,gBAAgB;IAChB,UAAU,CAAC,EAAE,MAAM,GAAG,IAAI,CAAC;IAC3B,SAAS,CAAC,EAAE,OAAO,CAAC;CACrB"}

@@ -1,5 +1,3 @@
-export * from "./ah-sheli-website";
-export * from "./ah-sheli-reminders";
-export * from "./ah-sheli-runtime";
-export * from "./ah-sheli-users";
+export * from "./generated/api";
+export * from "./generated/types";
 //# sourceMappingURL=index.d.ts.map
