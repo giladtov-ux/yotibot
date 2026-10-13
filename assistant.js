@@ -1,7 +1,7 @@
 import { handleAssistantIntent, handleText, resolvePendingList, resolvePendingReminder } from "./commands.js";
 import { listClearTarget, isListConfirmationQuestion } from "./list-confirmations.js";
 import { isDeletionSuccessClaim } from "./deletion-receipts.js";
-import { askAssistant as analyzeMessage, parseWeeklySchedule, saveWeeklySchedule } from "./lib/assistant.server.ts";
+import { getChatReminders, getPendingAction, getLastListAction, getPendingListAction } from "./lib/assistant.server.js";
 import { getChatReminders, getPendingAction, getLastListAction, getPendingListAction } from "./store.js";
 import { formatJerusalemTime, getJerusalemDateString, extractHebrewTime,
   reminderValidationTime, withReminderRequestTime } from "./time.js";
