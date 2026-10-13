@@ -1,8 +1,11 @@
-import { askAssistant } from "./assistant.server.ts";
+import http from "http";
 
-console.log("Starting Yotibot server...");
+const server = http.createServer((req, res) => {
+  res.writeHead(200, { "Content-Type": "text/plain" });
+  res.end("Yotibot is running!\n");
+});
 
-// בדיקת תקינות הרצה בסיסית
-if (typeof askAssistant === "function") {
-  console.log("Yotibot assistant server loaded successfully!");
-}
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`Server is listening on port ${PORT}`);
+});
