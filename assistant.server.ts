@@ -1,4 +1,4 @@
-import { analyzeMessage, Interpret, createGroqClient } from "./groq-assistant.js";
+import { analyzeMessage, createGroqClient } from "./groq-assistant.js";
 import { createOpenRouterClient } from "./openrouter-client.js";
 import { parseWeeklySchedule, saveWeeklySchedule } from "./weekly-schedules.js";
 
@@ -14,7 +14,7 @@ export function createAssistantClient() {
 
 export async function askAssistant(userMessage, context = {}, clientOverride) {
   const client = clientOverride ?? (sharedClient ??= createAssistantClient());
-  return interpret(userMessage, context, client);
+return analyzeMessage(userMessage, context, client);
 }
 
 
