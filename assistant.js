@@ -2,7 +2,7 @@ import { handleAssistantIntent, handleText, resolvePendingList, resolvePendingRe
 import { listClearTarget, isListConfirmationQuestion } from "./list-confirmations.js";
 import { isDeletionSuccessClaim } from "./deletion-receipts.js";
 import { getChatReminders, getPendingAction, getLastListAction, getPendingListAction } from "./lib/assistant.server.js";
-import { getChatReminders, getPendingAction, getLastListAction, getPendingListAction } from "./store.js";
+import { getChatReminders as getStoreChatReminders, getPendingAction as getStorePendingAction, getLastListAction as getStoreLastListAction, getPendingListAction as getStorePendingListAction } from "./store.js";
 import { formatJerusalemTime, getJerusalemDateString, extractHebrewTime,
   reminderValidationTime, withReminderRequestTime } from "./time.js";
 import { AiServiceError } from "./ai-errors.js";
