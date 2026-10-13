@@ -1,115 +1,242 @@
-# אח שלי (Ah Sheli)
+# Local demo rendered-browser regression
 
-עוזר אישי בטלגרם שמבין הודעות חופשיות בעברית, עונה על שאלות, ומנהל רשימות, משימות ותזכורות.
+These tests load the **existing API preview** at `/#demo`. They do not start
+the Telegram worker or create real reminders. The browser blocks unexpected
+network requests; only the same-origin public document, explicitly listed public
+scripts/styles and Google Fonts GETs are allowed. The Telegram Mini App SDK
+request is fulfilled locally with empty JavaScript, never sent to Telegram.
+API requests, checkout and unrelated navigation remain blocked and fail the test.
 
-### סימון בדיקה של בקשות שנקטעו
+## Run
 
-- אחרי בדיקה ידנית של הרשימות או התזכורות, הבעלים יכול לשלוח `/reviewed 123` (במקום 123: מזהה הבקשה מהדוח). זהו סימון שנבדקה בלבד: הוא לא מוכיח שמירה, לא משנה סטטוס עיבוד, לא מוחק מזהים ולא מאפשר להריץ מחדש.
-- לביטול סימון שנעשה בטעות, הבעלים בלבד יכול לשלוח `/unreviewed 123`. הבקשה תחזור לדוח הרגיל בלי שינוי סטטוס, מזהה, תוכן או מניעת כפילויות ובלי הרצה חוזרת. אפשר לחזור על הפקודה בבטחה; בקשות מצ׳אט אחר, בקשות שהסתיימו והבקשה הנוכחית לא משתנות.
-- `/interrupted` מסתיר בקשות שנבדקו. `/interrupted all` או `בקשות שנקטעו כולל שנבדקו` מציגים גם אותן, עם סימון מפורש. פקודת העמוד הבא שומרת על מצב התצוגה.
-- רישומים ישנים ללא צ׳אט נשארים ללא ייחוס גם לאחר סימון. בקשות של צ׳אט אחר, בקשות שהסתיימו והעדכון הנוכחי אינם ניתנים לסימון.
-- לפני הפעלת הקוד המעודכן יש להוסיף את העמודה האופציונלית `reviewed_at` דרך תהליך שינוי הסכמה המאושר. הסכמה המשותפת מעודכנת, ופקודת השינוי המוסיפה בלבד נמצאת ב־`docs/reviewed-requests-migration.sql`. השינוי לא מתבצע בזמן עליית הבוט. במשימה זו לא הוחל שינוי על מסד חי ולא הופעל או אותחל הבוט.
-- האימות משתמש ברישומים, מסד ותחבורת Telegram מדומים בלבד, כולל אובדן אישור כתיבה/שליחה ומניעת הרצה חוזרת.
+From the workspace root, with an already running API server:
 
-## סודות והפעלה
+```sh
+pnpm --filter @workspace/api-server exec playwright install chromium webkit
+DEMO_BASE_URL=https://your-preview-host \
+  pnpm --filter @workspace/api-server run test:demo:browser
+```
 
-1. שמור את `TELEGRAM_BOT_TOKEN` ואת מפתח Groq ב-Replit Secrets בלבד. שם המפתח המועדף הוא `GROQ_API_KEY`; לשם תאימות לסקריפט שסופק, הבוט קורא את `OPENAI_API_KEY` אם אין `GROQ_API_KEY`. בשני המקרים חייב להיות זה מפתח Groq, ואין פנייה ל-OpenAI. לעולם אל תכניס מפתחות לקוד, לקובצי הגדרות או לצ'אט. הבוט משתמש רק ב-Groq API ישירות, ללא חיבור AI מנוהל של Replit. הדגם הפעיל הוא `openai/gpt-oss-20b` דרך Groq. הקידומת מציינת את יוצר המודל, לא את ספק ה-API. אין מעבר אוטומטי לדגם או לספק אחר.
-2. הפעל את ה-workflow **Ah Sheli Telegram Bot** בסביבת הפיתוח.
-3. אפשר לשמור מספר צ׳אט תקין ב-Secret בשם `TELEGRAM_ALLOWED_CHAT_ID`, או להפעיל `pnpm --filter @workspace/ah-sheli-bot run connect-owner` ולשלוח את פקודת החיבור החד־פעמית שהתקבלה לבוט בצ׳אט פרטי.
-4. אחרי הפעלה מחדש, שלח `/start` או פשוט כתוב לבוט בעברית.
+`DEMO_BASE_URL` defaults to `https://$REPLIT_DEV_DOMAIN` if present. No credentials
+are needed. This suite deliberately has no `webServer` command or bot dependency.
 
-להפעלה ידנית מתוך הפרויקט: `pnpm --filter @workspace/ah-sheli-bot run start`.
+For a host with a preinstalled Chromium executable:
 
-הבוט אישי: עד לחיבור בעלים הוא מאפשר רק זיהוי `/id` וחיבור `/connect` מאומת, ולא מפעיל AI או פעולות ברשימות. חיבור חד־פעמי שומר מזהה צ׳אט ב-PostgreSQL, בלי להעתיקו לקוד. פקודת החיבור פגה לאחר 15 דקות, במסד נשמר רק הגיבוב שלה, והיא יכולה לחבר רק בעלים אחד מתוך צ׳אט פרטי. בעלים שכבר חובר לא מוחלף אוטומטית; רישום במסד הוא מקור האמת לאחר החיבור, ו-Secret מספרי משמש לתאימות לפני חיבור במסד. לאחר ההגדרה, רק הצ׳אט המורשה יכול להשתמש בבוט ולקבל תזכורות. אין לשתף פקודות חיבור או לשמור אותן בקבצי הפרויקט. הבוט נשאר טקסטואלי. הודעות המשתמש, הלו"ז הקבוע והמידע הרלוונטי השמור באותו צ'אט נשלחים ל-Groq כדי להבין את הבקשה ולהשיב. פעולות כתיבה עדיין נבדקות ומבוצעות בקוד הבוט. שימוש ב-Groq תלוי בהרשאות ובמגבלות ה-API בחשבון Groq. הבוט אינו משנה הגדרות חיוב או מחליף ספק אוטומטית.
+```sh
+DEMO_CHROMIUM_PATH=/repl/tools/bin/chromium \
+  pnpm --filter @workspace/api-server run test:demo:browser --project=chromium
+```
 
-## נתונים ותזכורות
+Do not put an extra `--` before the Playwright arguments when using `pnpm run`.
+Use `--project=webkit` to run WebKit separately. Missing browsers or host libraries
+fail the selected project rather than silently skipping it.
 
-- תזכורות נשמרות בטבלת PostgreSQL בשם `ah_sheli_reminders`. שינויי הסכמה בסביבת הפיתוח נעשים עם `pnpm --filter @workspace/db run push`; הפרסום מעדכן את סכמת מסד הייצור.
-- נתוני רשימות, משימות, בקשות המשך ומיקום העדכונים נשמרים ב-PostgreSQL וגם בקובץ `data/state.json`. הקובץ הקיים מועתק למסד בהפעלה הראשונה בלבד; לאחר מכן המסד הוא מקור האמת. תזכורות ישנות מתמזגות בלי למחוק את הקובץ. התזכורות והמצב נשמרים באותה עסקה, גם באתחול. כשל לפני אישור העסקה דוחה את הפעולה; כשל בהחלפת קובץ הגיבוי אחרי אישור העסקה נרשם כאזהרה בלבד ואינו מבטל את השינוי בזיכרון. באתחול קוראים קודם מהמסד, כך שגיבוי ישן, חסר או פגום אינו מחזיר נתונים ישנים. בסביבת קובץ בלבד, כשל בכתיבה או בהחלפת הקובץ עדיין דוחה את הפעולה.
-- אחרי שינוי רשימה שנשמר בהצלחה אפשר להמשיך ב״וגם ביצים״, בלי לחזור על שם הרשימה. היעד המאומת נשמר בנפרד לכל צ׳אט ושורד אתחול; רק הפריטים מההודעה החדשה מתווספים. הצגת רשימה אינה שינוי ואינה מחליפה את היעד. היסטוריה או הבטחת AI אינן אישור שמירה, ובהיעדר יעד מאומת או כשהניסוח אינו ברור הבוט שואל לאיזו רשימה להוסיף. רשימות אינן הופכות לתזכורות.
-- היסטוריית שיחה נשמרת ב-`ah_sheli_messages`; רק הקשר מצומצם ורלוונטי באותו צ׳אט נמסר ל-AI, כמפורט למטה. עדכונים נרשמים ב-`ah_sheli_updates` לפני העיבוד, עם מפתח ייחודי וסטטוס הצלחה/כשל.
-- לבדיקת בקשות שלא קיבלו סיום מתועד, הבעלים בלבד יכול לשלוח `/interrupted` או `בקשות שנקטעו`. הדוח מציג עד 10 רישומים בכל עמוד, עם פקודה לעמוד הבא, מזהה, זמן בישראל, סטטוס ותקציר עד 240 תווים של בקשות בעלים חדשות. `processing` וגם `failed` אינם מוכיחים שהפעולה לא נשמרה: ייתכן שהשמירה הושלמה אבל האישור לא הגיע. אין ניסיון חוזר, איפוס סטטוס או הפעלת בקשות המשך; יש לבדוק את הרשימות/התזכורות לפני בקשה חוזרת. הבקשה הנוכחית אינה נכללת בדוח. רישומים ישנים ללא צ׳אט מופיעים כמזהים בלבד, ללא ייחוס לבעלים או שחזור נוסח מהיסטוריה. נוסח הודעות מצ׳אטים אחרים ופקודות חיבור אינו נשמר בדוח. הסכמה כוללת עמודות אופציונליות `chat_id` ו-`request_text`; אין שינוי או מחיקה של רישומים ישנים ואין שינוי סכמה בזמן עליית הבוט. אימות השינוי נעשה במבחנים סינתטיים בלבד, בלי הפעלת הבוט או שינוי מסד חי.
-- מתזמן רקע מבוסס `node-schedule` מפעיל משימת Cron בכל שנייה (`* * * * * *`, אזור זמן `Asia/Jerusalem`) ושולח תזכורות שהגיע זמנן באופן יזום דרך Telegram `sendMessage`, בלי להמתין להודעה חדשה ובלי לקרוא ל-AI. הספרייה מותאמת לקוד JavaScript הקיים במקום ספריות Python כמו `schedule` או `apscheduler`. זמני התזכורות נשמרים במסד ולא רק בזיכרון הספרייה; לכן בהפעלה המתזמן בודק מיד תזכורות שמורות שכבר הגיע זמנן, כולל לאחר הפעלה מחדש. הבדיקות אינן חופפות, כשל זמני אינו מפסיק את המשימה, והיא מבוטלת בכיבוי או באובדן נעילת העובד. כשל ברישום המשימה מפסיק את האתחול במפורש. זמני ההגעה בפועל תלויים בזמינות השרת, מסד הנתונים ו-Telegram; זו אינה התחייבות לדיוק בזמן אמת. דחייה מפורשת של Telegram מאפשרת ניסיון נוסף לאחר דקה. תוצאה לא ודאית (ניתוק/timeout או כשל בשמירת אישור) אינה נשלחת שוב אוטומטית, כדי למנוע כפילויות; בהפעלה מחדש נשלחת לבעלים הודעה לבדיקה.
-- הלו"ז הקבוע (06:00, 06:35, 09:00, 14:00 ו-16:30) והחלונות הפנויים הם הקשר בלבד. הם אינם נרשמים כתזכורות ואינם יוצרים התראות.
-- זמן מקומי: `Asia/Jerusalem`.
+The `firefox` project selects only the four `keyboard accessibility` cases;
+it does not add Firefox Hebrew-layout or Safari coverage. On a supported host:
 
-### הפרשי זמן והפרדת סוגי נתונים
+```sh
+pnpm --filter @workspace/api-server exec playwright install firefox
+pnpm --filter @workspace/api-server run test:demo:browser --project=firefox
+```
 
-- "תזכיר לי לשתות מים כל 2 דקות" נשמרת כתזכורת חוזרת בהפרש מדויק של 120,000 מילישניות, החל מעוד שתי דקות ועד לביטול. "3 פעמים" מגבילה לשלוש שליחות. שעת התחלה מפורשת מחושבת בשעון ישראל; שעת התחלה שכבר עברה אינה מועברת למחר. הפרש או תוכן חסרים, או מגבלת סיום שלא ניתן לפענח בבטחה, אינם יוצרים חזרה בניחוש.
-- תזכורת חוזרת נשארת אותה רשומה עם מועד הבא ומספר שליחות שנותרו. המועד הבא מחושב ביחס למועד המתוכנן, ולא ביחס לדקת ה-Cron או לסיום השליחה. בדיקה בכל שנייה אינה שליחה בכל שנייה או דקה. לאחר השבתה נשלחת לכל סדרה הודעה אחת ומדלגים על פעימות שהוחמצו, בלי הצפה; מספר הפעמים יורד בשליחות שאושרו בלבד.
-- ברצף פעילויות בהפרש קבוע הקוד מחשב בעצמו התחלה + מספר הפריט כפול ההפרש, בלי לסמוך על חישובי השעות של AI. חציית שעה או חצות אינה משנה את ההפרש. חזרה מבוססת על זמן שחלף בפועל גם בשינוי שעון קיץ/חורף.
-- רשימות מכילות רק פריטי רשימה. "מה רשימת המשימות שלי?" קוראת רק את הרשימה, ו"מה הלו״ז שלי?" קוראת רק תזכורות פעילות. בקשות הצגה מפורשות אינן זקוקות ל-AI; גם סיווג AI שגוי אינו יכול לשנות את סוג הנתונים שיוצג. פריט טקסט ברשימה המכיל שעה אינו יוצר התראה בפני עצמו.
-- לפרסום העדכון נדרשת הרחבת הסכמה בשתי עמודות nullable: `repeat_every_ms` ו-`remaining_occurrences`. סכמה זו הוחלה בפיתוח; תזכורות חד־פעמיות קיימות אינן משתנות. יש לאשר את הרחבת הסכמה בפרסום לייצור, בלי להעתיק או לאפס נתונים.
+## Coverage and limits
 
-## כפתורי התזכורות בטלגרם
+- Three phone widths: 320, 360 and 390 CSS pixels.
+- A real DOM/layout engine, with Playwright's browser clock for deterministic
+  animation timing. All progressive reply and popup fields are checked.
+- The initial user bubble is visible immediately on loading `/#demo`, and the
+  bot reply and visual reminder follow automatically without clicking replay.
+- Following the user's video reference, the local card marks itself completed
+  and shows a short assistant acknowledgement automatically, then fades and
+  repeats. These visual steps do not call Telegram or perform real reminder actions.
+- Rendered Hebrew glyph positions are RTL; time glyph positions are LTR and
+  isolated at each intermediate `7`, `7:`, `7:3`, `7:30` state.
+- Exact request/reply, completed widget fields, no horizontal card overflow,
+  popup fields/buttons inside their card, scrolling and actual local done/delete
+  button clicks, plus completion, fading, reset and the next request.
+- In-page tab changes pause partial text and resume it.
+- Page-visibility **events are explicitly simulated** with controlled
+  `document.hidden`/`visibilityState` properties in a rendered browser. Headless
+  tabs are not a reliable OS-backgrounding test; this is not a test of switching
+  phone apps, screen locking, timer throttling or back-forward cache.
+- Reduced-motion media emulation still autoplays progressive messages and the
+  wake-up popup. Decorative motion is reduced, but pause/resume, deletion and
+  replay remain available; there is no automatic static-preview mode.
 
-- תזכורות חדשות נשלחות עם מקלדת Telegram מקורית: `✅ בוצע!` ו־`🗑️ מחק`.
-- „בוצע!” שומר השלמה, מסמן אותה בהודעה ומסיר את הכפתורים. בסדרה חוזרת או שבועית הוא מסיים רק את המופע שנשלח, בלי להזיז שוב את המועד הבא או להפחית שוב את מספר השליחות.
-- „מחק” מסיר רק את התזכורת שנבחרה ואת ההודעה שלה. בתזכורת חוזרת הוא מבטל גם את ההמשך, וההודעה מציינת זאת מראש. אם Telegram מסרב למחוק הודעה ישנה, היא מוחלפת באישור מחיקה ללא כפתורים.
-- לחיצות מוגבלות לבעלים בצ׳אט הפרטי, ומקושרות למופע ולהודעת Telegram שנשלחו. לחיצה חוזרת לא מבצעת שוב את השינוי; רשימות קניות ומשימות אינן משתנות.
-- הבוט מקבל `callback_query` גם ב־Webhook וגם ב־polling. פעולות הכפתורים ושליחות התזכורות עוברות בתור משותף כדי שלא ידרסו זו את זו, בלי להמתין לקריאות AI.
-- עד 128 אישורי מופעים נשמרים לכל תזכורת ב־JSON המצב הקיים, באותה עסקה עם טבלת התזכורות, ומשוחזרים לפי מזהה ובעלות בהפעלה מחדש. אין עמודות או מיגרציות חדשות. כפתורי מופעים שיצאו מהחלון אינם מבצעים שינוי.
-- בדיקות סינתטיות מכסות שליחה ו־callback, השלמה/מחיקה, כפילויות, הרשאות, המשך סדרות, כשלי שמירה/Telegram, הודעות ארוכות ושחזור מהמסד. הן אינן שולחות הודעות אמיתיות לבעלים.
-- נדרש לפרסם מחדש כדי להפעיל את השינוי בייצור ולרשום קבלת לחיצות ב־Webhook. הודעות ישנות שנשלחו ללא כפתורים לא משתנות בדיעבד. אין להפעיל עובד פיתוח נוסף מול אותו בוט כדי „לבדוק” את הייצור.
+Each full-cycle case attaches a screenshot of the completed card. Add
+`--reporter=html` for a browsable report in `tests/browser/html-report/`.
+Failures retain screenshots and traces in `tests/browser/results/`.
 
-## Webhook ופרסום
+## Validation recorded on 2026-10-08
 
-- בסביבת הפיתוח הבוט משתמש ב-long polling רק אם לא מוגדר כבר webhook פעיל. הוא לא מוחק webhook פעיל ולא יריץ עובד תזכורות כפול במקרה כזה.
-- לאחר פרסום **API Server** כ-Reserved VM ציבורי והגדרת `TELEGRAM_WEBHOOK_URL`, השירות מפעיל את עובד הבוט ומגדיר את webhook. טוקן האימות נוצר פעם אחת ונשמר ב-`ah_sheli_config`, ולא מודפס בלוגים.
-- כדי שהטיימר יעבוד גם ללא תעבורה, בחר Reserved VM בהגדרות הפרסום ופרסם מחדש. Autoscale עשוי לרדת לאפס כשאין בקשות ולכן אינו מתאים למתזמן רקע רציף. הפעלה מחדש בסביבת הפיתוח אינה משנה את סוג הפרסום או מפעילה את העדכון בייצור.
-- אפשר להגדיר `TELEGRAM_WEBHOOK_URL` ככתובת HTTPS מלאה שמסתיימת ב-`/api/telegram/webhook`. כתובת היעד חייבת להיות נגישה מבחוץ; סביבת הפיתוח אינה כתובת production יציבה.
-- בטלגרם ניתן לעדכן רק webhook אחד לכל בוט. אין להפעיל במקביל תהליך polling נוסף עם אותו אסימון.
-
-פקודות `/` הישנות נשארו לתאימות, אך אפשר לכתוב בשפה רגילה ולבקש למשל ליצור רשימה, להוסיף משימה, לשאול מה שמור, או לקבוע תזכורת למועד חסר ולקבל שאלת המשך.
-
-שליחת סידור עבודה או לו״ז אישי יוצרת אוטומטית את כל התזכורות המתוזמנות יחד, ללא בקשה נפרדת לכל פריט. לדוגמה: “מחר: 06:00 השכמה, 06:35 יציאה לאיסופים, 09:00 חזרה, 14:00 איסוף צהריים, 16:30 חזרה”. ברירת המחדל ללא יום היא היום וללא הקדמת התראה היא שעת הפעילות עצמה. התוכנה מאמתת את כל הפריטים לפני שמירה אחת, מונעת כפילויות לפי צ׳אט, זמן ותוכן, ומציגה גם אירועים שכבר עברו בלי להעבירם למחר. אם חסרים פרטים נדרשת תשובה מרוכזת אחת, ללא שליחת הלו״ז מחדש. הלו״ז הקבוע ברקע ושאלות תיאורטיות אינם יוצרים תזכורות; בקשה מפורשת להצגה בלבד מכובדת. סיכום ארוך נשלח בחלקים במקום להיחתך.
-
-### כששירות ה-AI אינו זמין
-
-הבוט מבדיל בין חוסר יתרה, אימות API שנכשל, עומס, תקלה בחיבור ותשובה לא תקינה. הוא אינו מציג הודעת שגיאה גולמית של הספק, ואינו מנסה שוב אוטומטית קריאה שנכשלה בגלל יתרה או מפתח. כשאפשר, המנגנון המקומי הקיים מטפל בבקשות פשוטות לרשימות, משימות ותזכורות, עם הודעה מפורשת שמדובר במצב מקומי ללא AI. תשובה לא תקינה מה-AI אינה משמשת לשמירת פעולה.
-
-אם Groq דוחה את המפתח או שהמכסה מסתיימת, מוצגת הודעה ברורה. אין ניסיון להתחבר לספק אחר. המפתח נשלח בכותרת `Authorization: Bearer`, לא בכתובת הבקשה ולא בלוגים. היעד קבוע: `https://api.groq.com/openai/v1/chat/completions`. המילה openai בנתיב מציינת תאימות לפורמט API, לא את ספק החיבור.
-
-בקשות Groq מוגנות בעד שלושה ניסיונות, עם השהיה מדורגת ותקציב כולל של 12 שניות לבקשה רגילה (עד 8 שניות לניסיון, או יתרת התקציב). לבקשה גדולה שדורשת מעל 2,048 טוקני פלט מוקצות עד 18 שניות בסך הכול ועד 12 לניסיון, כדי לא לחתוך רשימות מלאות. שגיאות רשת ו-408/500/502/503/504 יכולות לעבור ניסיון חוזר; מפתח שגוי, בקשה שנדחתה, דגם חסר וחוסר מכסה אינם נשלחים שוב אוטומטית. מגבלת קצב זמנית מכבדת `Retry-After`; המתנה ארוכה מפעילה cooldown במקום להחזיק את ה-Webhook פתוח או להציף את Groq. כשל זמינות מתמשך מפעיל הפסקת פניות קצרה. הלוגים כוללים רק מספר ניסיון, סטטוס וקוד תקלה מאובטח.
-
-לביצועים: הדגם הפעיל הוא `openai/gpt-oss-20b` דרך Groq, עם `reasoning_effort: "low"` וללא מעבר אוטומטי לדגם כבד יותר. `max_tokens` הוא 1,024 לשיחה רגילה, 2,048 לפירוט מפורש, והגדלה לפי גודל בקשת משתמש או לו״ז קודם שמושלם, עד תקרה של 8,192. הודעת המשתמש הנוכחית נשלחת בשלמותה. המודל אינו משכפל סיכומי פעולות בתוך הפלט; סיכום השמירה נבנה בקוד. נשמר פורמט `json_object` שנבדק בפועל: ה-System Prompt מגדיר את הפורמט, והקוד מאמת סוגי פעולות, פריטים, זמנים ותאריכים לפני שמירה. סירוב, פלט שנחתך או JSON לא תקין אינם משמשים לשמירה.
-
-היסטוריה נשלפת רק כשנחוצה: לו״ז חדש ושלם ופקודות slash אינם קוראים היסטוריה. בבקשות אחרות נשלפות עד 8 הודעות, והמודל מקבל עד 4 אחרונות ועוד הודעת לו״ז מקורית אחת, עד 5,200 תווים בסך הכול. ההודעות מועברות בסדר כרונולוגי עם תפקידי `user` ו-`assistant`, אחרי ה-System Prompt הקבוע ולפני ההודעה הנוכחית, ללא העתק נוסף בתוך ההקשר. ההנחיות מזהות את הבוט כעוזר של יוטי ומורות להשתמש בהיסטוריה לשאלות המשך, בלי לבצע שוב פעולות ישנות. סיכומי הבוט מוגבלים ל-350 תווים; לו״ז המשתמש המקורי מקבל עדיפות כדי לשמור על השלמות בהבהרות. העותקים שנשמרו במסד אינם נמחקים או מקוצרים. רק דגימות קטנות ורלוונטיות של הרשימות והתזכורות נשלחות ל-AI; להצגה מלאה משתמשים בפקודות הקוראות את הנתונים השמורים. מידע קבוע מה-System Prompt אינו נשלח שוב בהקשר.
-
-נוספו לוגי זמן נפרדים לקריאת היסטוריה, AI ופעולות, שמירת השיחה ושליחה לטלגרם. הם מאפשרים להבדיל בין האטה של Groq לבין האטה במסד או בתקשורת Telegram, ללא רישום הודעות או מזהי צ׳אט. מגבלת זמן AI אינה הבטחה למגבלת זמן של כל שרשרת המסד והשליחה, והעדכון דורש פרסום מחדש כדי לפעול בייצור.
-
-אם Groq אינו משלים פענוח של סידור עבודה, מופעל גיבוי ייעודי על הטקסט המקורי בלבד. הוא תומך בשעות HH:mm, שעות עם בבוקר/בערב ושעות מפורשות כגון “בשעה 6”, בפעילות לפני או אחרי השעה, בשורות ובפסקאות, ובימים היום/מחר/מחרתיים ובתאריכי ISO. כל האירועים הברורים עוברים יחד לאותו מנגנון שמירה מאומת, עם מניעת כפילויות. הבוט מציין שהשתמש בגיבוי ולא מציג זאת כתשובת AI. פורמט עמום, טווחי שעות, תאריך לא מוכר או פרטים חסרים גוררים שאלה מרוכזת ללא שמירה חלקית או ניחוש. בקשות להצגה בלבד והרקע הקבוע אינם מייצרים התראות. אין הבטחה ש-Groq תהיה תמיד זמינה.
-
-## התאמת גיבוי ה-PDF לתשתית הקיימת
-
-אין מעבר ל-Lovable, Supabase או TanStack Start. המיפוי הוא:
-
-| חלק בגיבוי | מימוש בפרויקט |
+| Engine/check | Result |
 | --- | --- |
-| מוח הבוט וזמני ישראל | `src/assistant.js`, `src/groq-assistant.js`, `src/groq-requests.js`, `src/assistant-intent.js`, `src/time.js` |
-| פונקציות Telegram | `src/telegram.js` וב-API: `src/lib/telegram.functions.ts` |
-| webhook | ב-API: `src/routes/public/telegram/webhook.ts`; עיבוד בבוט `index.js` |
-| cron/hooks | ב-API: `src/routes/public/hooks/send-reminders.ts`; בבוט `src/reminder-worker.js` |
-| start/server ושגיאות | `artifacts/api-server/src/app.ts`, `src/index.ts` והסגירה המסודרת בבוט |
-| היסטוריה, token ומניעת כפילויות | `src/conversation-repository.js` וסכמות `lib/db/src/schema/` |
+| Chromium 152.0.7977.64, Playwright 1.63.0 | **6/6 passed**, including page-load autoplay and all three phone widths |
+| Native VM/timer suite (`node --test artifacts/api-server/tests/demo-playback.test.mjs`) | **21/21 passed** |
+| Playwright WebKit 26.6, revision 2359 | Downloaded and launch attempted, but **not executed**: Linux host lacks GTK 4, ICU 74, GStreamer, Pango/Harfbuzz, Cairo and other required libraries |
+| Actual Safari on macOS/iPhone/iPad | **Not tested** |
 
-נתיב נוסף תואם לגיבוי: `POST /api/public/telegram/webhook`.
-שליחה יזומה: `POST /api/public/hooks/send-reminders`, עם `Authorization: Bearer <hook_token>`.
-אותו עובד שולח גם אוטומטית בכל דקה; אין צורך להגדיר Supabase cron נוסף.
-הנתיב הישן `/api/telegram/webhook` נשמר לתאימות.
+Chromium command used by the browser tester (from `artifacts/api-server`):
 
-אין שרת H3 ולכן אין צורך להעתיק את עוקף השגיאות שלו. אין כאן server functions עם התחברות באמצעות cookies; הנתיבים הציבוריים מוגנים בכותרות טוקן, ולא בפטור גורף מ-CSRF. לא נוספו לוח ניהול או משתמשים נוספים. משימות רגילות ללא מועד לא יוצרות התראה אוטומטית. סידור עבודה או לו״ז אישי שנשלח לבוט כן יוצר תזכורות מתוזמנות ללא צורך בבקשת התראה לכל פריט בנפרד.
+```sh
+DEMO_BASE_URL=https://your-preview-host \
+DEMO_CHROMIUM_PATH=/repl/tools/bin/chromium \
+pnpm exec playwright test --config tests/browser/playwright.config.mjs \
+  --project=chromium --reporter=html
+```
 
-נעילת PostgreSQL מאפשרת רק עובד פעיל אחד מול מסד נתון; התנגשות גורמת לעובד הנוסף להיעצר. עובד ה-production מופעל מחדש לאחר כשל על ידי שירות ה-API. כפילויות של update_id וריצות מתזמן מקבילות נחסמות. ל-Telegram אין מפתח idempotency עבור sendMessage: במקרה נדיר של קריסה או timeout לאחר שההודעה התקבלה ולפני שמירת האישור, אי אפשר להבטיח בדיוק-פעם-אחת. עדכון שנכשל לאחר claim לא משוחזר אוטומטית כדי למנוע שינוי כפול של רשומות.
+Completed-card screenshots are attached to the HTML report (282×521, 322×521
+and 352×521 pixels). No unexpected requests or page errors were reported.
+The shipped HTML now shows the user bubble on its first frame, keeps the
+animated bubbles from shrinking and scrolls to the reply/popup as they appear.
+Passing Chromium does **not** establish Safari compatibility.
+WebKit tests remain ready to run on a compatible host; even passing Playwright
+WebKit would be automated engine coverage, not actual Safari-device verification.
 
-הנעילה מוחזקת בחיבור ייעודי מחוץ ל-pool של שאילתות הנתונים. כל 10 שניות נבדקת הבעלות באותו backend, עם timeout של 5 שניות ו-TCP keepalive. אובדן הבעלות עוצר את העובד; רק תהליך חדש שרכש נעילה וטען מחדש את המסד רשאי להמשיך. התאוששות ראשונה מתחילה לאחר שנייה; כשלים חוזרים מגדילים את ההמתנה עד 30 שניות. שגיאת חיבור נתונים פנוי אינה מפילה את העובד. נדרש חיבור PostgreSQL שמשמר session, לא transaction pooling. פרטי האבחון, מגבלות האימות והבדיקות: [database reliability](docs/database-reliability.md).
+## WebKit verification — 2026-10-10
 
-שרת הבוט נפתח לפני עדכוני השם והתיאור ב-Telegram. `/healthz` מזהה את השירות וכולל `ready`; ה-API אינו מעביר עבודה לעובד שעדיין אינו מוכן. הטוקן, הרשאת הבעלים, ה-Webhook ומסד הנתונים נשארים כפי שהם. אין צורך בשינוי סכמה לצורך עדכון זה.
+**5/5 selected cases passed** on Playwright WebKit 26.6 (revision 2359),
+Playwright 1.63.0, Linux x86_64 with Nix-provided libraries and Mesa software
+rendering. See [the environment, commands and separate Safari-device
+status](WEBKIT-VALIDATION.md). This supersedes the earlier *unavailable WebKit*
+result for this selected layout/motion scope, not the other validation gaps.
 
-### הפעלה רציפה
+**Actual Safari on an Apple device: not tested; no device was available.**
 
-1. יש להשתמש במפתח Telegram חדש אם הקודם נחשף, ואז לבדוק `/id` ולהגדיר `TELEGRAM_ALLOWED_CHAT_ID`.
-2. ב-Publishing → Adjust settings יש לבחור **Reserved VM** ופריסה **Public**. VM מחויב לפי שעה; קרדיטי Core משמשים לתשלום לפי היתרה.
-3. בפרסום הראשון אפשר להעלות את שרת ה-API; ללא `TELEGRAM_WEBHOOK_URL` הבוט עדיין לא יופעל ב-production. אם מסד ה-production חדש וריק, אפשר לבחור “Set up your production database with your current development data” כדי לשמר את חיבור הבעלים והמידע הקיים. אין להשתמש באפשרות זו על מסד production שכבר מכיל נתונים, משום שהיא עלולה לדרוס אותם; במקרה כזה יש להעביר את הגדרת הבעלים באופן ממוקד או לבצע חיבור מאומת מחדש.
-4. אחרי קבלת כתובת הפרסום המאומתת, יש לוודא שהרשאת הבעלים קיימת גם במסד production ולהגדיר `TELEGRAM_WEBHOOK_URL` ככתובת זו עם `/api/public/telegram/webhook`. לפני הפעלת עובד ה-production יש לעצור את workflow הבוט בסביבת הפיתוח: נעילת PostgreSQL אינה משותפת לשני מסדים נפרדים, ושני עובדים עלולים לשלוח תזכורות מאותו בוט.
-5. יש לעדכן את הפריסה ולאמת webhook מול Telegram ושליחת תזכורת אמיתית. workflow בסביבת הפיתוח אינו תחליף לפריסה רציפה.
+## Keyboard and accessible-name regression
+
+Run only the four keyboard cases, without repeating the Hebrew layout suite:
+
+```sh
+DEMO_CHROMIUM_PATH=/repl/tools/bin/chromium \
+  pnpm --filter @workspace/api-server run test:demo:browser \
+  --project=chromium --grep='keyboard accessibility'
+```
+
+The cases verify:
+
+- Native Enter and Space activation of pause/resume at a partial reply, frozen
+  text while paused, continuation from that point, and focus retained through
+  subsequent animation loops.
+- The focused button's changing action name, both through accessible-name
+  assertions and the browser accessibility snapshot, plus a visible focus outline.
+- Tab and Shift+Tab order from the live-demo entry point through the message
+  input, send, pause/resume and replay. Submitting a local message keeps input
+  focus; deliberately resuming keeps control focus and preserves that message.
+- Replay activation using both Enter and Space, its exposed accessible name,
+  retained focus and preserved local messages.
+- Pause, resume and replay remain enabled and keyboard-operable with reduced
+  motion, including freezing the sequence until deliberate continuation.
+
+On 2026-10-08 all **4/4 cases passed** in Chromium 152.0.7977.64 with
+Playwright 1.63.0, and the VM/timer suite passed **21/21 cases**. No unexpected
+requests or page errors occurred in these tests. Production HTML and bot code
+were unchanged.
+
+These are real-browser keyboard and accessibility-tree checks, **not** audible
+screen-reader verification. They do not establish how NVDA or VoiceOver
+announces a name change on an already-focused button. Actual assistive-technology
+speech and Safari-device coverage require their respective environments.
+
+### Firefox keyboard verification — 2026-10-10
+
+All **4/4 cases passed** in Playwright Firefox **155.0**, revision **1543**,
+with Playwright **1.63.0** on Linux x86_64. The same four cases also passed in
+Chromium in the final combined run: **8/8 passed in 19.8 seconds**.
+No unexpected requests or JavaScript page errors were reported.
+
+The existing homepage now loads `brand-colors.css`; that specific same-origin
+public stylesheet was added to the network allowlist. The entry-button selector
+was updated to the current exact accessible name, `צפו בהדגמה`. No application
+HTML, styles, playback code, bot code or bot workflow was changed.
+
+This Nix host needed a coherent library path for the downloaded Firefox:
+
+```sh
+nix-instantiate --eval -E 'with import <nixpkgs> {}; lib.makeLibraryPath [
+  gtk3 glib pango cairo atk gdk-pixbuf xorg.libX11 xorg.libX11.dev
+  xorg.libxcb xorg.libXcomposite xorg.libXcursor xorg.libXdamage
+  xorg.libXext xorg.libXfixes xorg.libXi xorg.libXrandr xorg.libXrender
+  alsa-lib dbus stdenv.cc.cc.lib
+]' | tr -d '"' > .cache/firefox-library-path
+
+LD_LIBRARY_PATH="$(cat .cache/firefox-library-path)" \
+DEMO_BASE_URL=http://localhost:80 \
+DEMO_CHROMIUM_PATH=/repl/tools/bin/chromium \
+pnpm --filter @workspace/api-server run test:demo:browser \
+  --project=firefox --project=chromium --grep='keyboard accessibility' \
+  --max-failures=1
+```
+
+The HTTPS development hostname initially failed with
+`SEC_ERROR_UNKNOWN_ISSUER` in Firefox. The final run used the **same existing
+preview through its local port-80 proxy**, not a separate server or static
+fixture. Certificate checks were not disabled, the browser executable was not
+modified, and Playwright's host preflight was not bypassed. `.cache/` and test
+results are ignored generated local state. API, checkout and unrelated requests
+remain blocked; the Telegram SDK remains locally fulfilled, and only the
+already-allowed public font requests may go to their external hosts.
+
+This validates native keyboard input and browser-exposed accessible names,
+not audible screen-reader announcements. No Safari or additional Hebrew layout
+tests were run for this verification.
+
+## NVDA speech verification — 2026-10-10
+
+**Blocked, not tested.** This workspace is Linux and no Windows host running
+NVDA and Chrome was available. Windows, NVDA and Chrome versions therefore
+remain unrecorded; there are no observed speech results. The earlier Chromium
+accessible-name results above are not evidence of audible announcements.
+No application changes were made and no speech defect was inferred.
+
+To finish on a Windows host, record Windows, NVDA and Chrome versions, the
+NVDA speech language/verbosity settings and the page revision tested. Capture
+Speech Viewer output and listen to the announcements for each scenario:
+
+- Focus pause during a partial reply. Use Enter to pause and resume while
+  retaining focus; repeat independently with Space.
+- Check both name changes: `השהיית ההדגמה המקומית` to
+  `המשך ההדגמה המקומית מאותה נקודה`, and back again.
+- Type in `כתבו הודעה להדגמה` while the demo is running, then submit a local
+  message. Record announcements during typing/submission, Tab through send to
+  the now-resume button, and activate resume with Enter and separately Space.
+- For every transition, record the actual words and whether announcements
+  are missing, duplicated, stale or confusing, distinguishing control-name
+  announcements from demo-message live-region announcements.
+
+Only fix a defect confirmed by this real NVDA run, then repeat the affected
+scenario. Safari/iPhone and bot behavior are outside this verification.
+
+## Native background lifecycle attempt — 2026-10-08
+
+**Blocked, not passed.** No prolonged-background lifecycle assertions ran.
+Both managed Chromium 140 and local headed Chromium 152.0.7977.64 kept the
+original document `hidden=false`, `visibilityState='visible'`, with no native
+`visibilitychange` after foregrounding another page. The headed attempt used
+`DISPLAY=:0`, fluxbox and `/repl/tools/bin/chromium`, with Playwright's
+`--disable-background-timer-throttling`, `--disable-renderer-backgrounding` and
+`--disable-backgrounding-occluded-windows` arguments removed. Minimizing only
+the test's own window via `xdotool` also did not produce hidden visibility.
+The CDP command `Emulation.setPageVisibilityState` was unsupported.
+
+A retry using a persistent (non-incognito) context, with `--enable-automation`
+also removed, did not change this result. A further native window-state check
+on `DISPLAY=:1` confirmed `Browser.getWindowBounds` reported `minimized` after
+`Browser.setWindowBounds`, while the document still reported `hidden=false`
+and no visibility event. Freezing/reactivating the page also did not produce
+a hidden transition and was not counted as background-visibility coverage.
+
+These are environment observations, not an application defect finding. No
+visibility property overrides, synthetic events or fake clock were used.
+An experimental lifecycle test stopped at the genuine-hidden-state gate; it
+was not retained as a validated regression suite.
+
+To finish verification, use a browser host that produces a native, trusted
+hidden `visibilitychange`. With native wall-clock timers, hide the demo during
+a partial reply for at least 65 seconds and verify unchanged text, indices,
+remaining delay and no active demo timer. On return, verify one-character
+progression without accelerated catch-up and only one timer chain. Repeat
+during popup typing, with explicit user pause (which must persist until resume),
+and through rapid hide/show cycles. Record native transitions, timing samples
+and the browser environment. Headed Linux coverage would not establish actual
+iOS/Android app-backgrounding or Safari-device coverage.
