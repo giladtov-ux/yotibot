@@ -1,4 +1,4 @@
-import { askAssistant } from "./src/assistant.server.ts";
+import { askAssistant } from "./assistant.server.ts";
 
 console.log("Starting Yotibot server...");
 
