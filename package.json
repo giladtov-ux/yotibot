@@ -1,5 +1,5 @@
 {
-  "name": "yoti-bot",
+  "name": "yotibot",
   "version": "1.0.0",
   "description": "Yoti Telegram Bot",
   "main": "index.js",
