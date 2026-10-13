@@ -1,8 +1,6 @@
-// Active server-only brain entry point. Node >=22.18 loads this .ts module
-// natively; keep it side-effect free so the production build checks its imports.
 import { analyzeMessage, Interpret, createGroqClient } from "./groq-assistant.js";
 import { createOpenRouterClient } from "./openrouter-client.js";
-export { parseWeeklySchedule, saveWeeklySchedule } from "./weekly-schedules.js";
+import { parseWeeklySchedule, saveWeeklySchedule } from "./weekly-schedules.js";
 
 let sharedClient;
 
