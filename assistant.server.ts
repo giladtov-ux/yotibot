@@ -19,4 +19,4 @@ export async function askAssistant(userMessage, context = {}, clientOverride) {
   return interpret(userMessage, context, client);
 }
 
-export const analyzeMessage = askAssistant;
+
