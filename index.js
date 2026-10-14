@@ -1,9 +1,13 @@
-// Root entry point for Render: keep Root Directory empty and run node index.js.
-// The existing worker retains ownership, SQL persistence and webhook handling.
-async function startBot({
+// Render runs the complete service from the repository root with node index.js.
+// The API supervises one existing worker; never start another worker here.
+async function startSystem({
   version = process.versions.node,
   env = process.env,
-  loadBot = () => import('./artifacts/ah-sheli-bot/index.js'),
+  validateEnvironment = async config => {
+    const { cloudEnvironmentErrors } = await import('./scripts/cloud-start.mjs');
+    return cloudEnvironmentErrors(config);
+  },
+  loadServer = () => import('./artifacts/api-server/dist/index.mjs'),
 } = {}) {
   const [major, minor] = version.split('.').map(Number);
   if (!Number.isInteger(major) || !Number.isInteger(minor)
@@ -13,15 +17,17 @@ async function startBot({
   if (env.NODE_ENV === 'production' && env.CLOUD_CUTOVER_APPROVED !== '1') {
     throw new Error('Stop the previous worker and approve the production cutover first.');
   }
-  return await loadBot();
+  const errors = await validateEnvironment(env);
+  if (errors.length) throw new Error(errors.join('\n'));
+  return await loadServer();
 }
 
-module.exports = { startBot };
+module.exports = { startSystem };
 
 if (require.main === module) {
-  startBot().catch(() => {
+  startSystem().catch(() => {
     // Import errors can contain credentials; do not print their raw contents.
-    console.error('[Ah Sheli] Startup failed. Verify Node.js >=22.18, production cutover approval, dependencies and bot/database settings. No secrets were logged.');
+    console.error('[Ah Sheli] Startup failed. Verify Node.js >=22.18, production cutover approval, external Clerk configuration, built API and required settings. No secrets were logged.');
     process.exitCode = 1;
   });
 }

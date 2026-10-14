@@ -8,8 +8,8 @@ services:
     numInstances: 1
     autoDeployTrigger: "off"
     buildCommand: npm install --global pnpm@10.26.1 && pnpm install --frozen-lockfile --prod=false && pnpm --filter @workspace/api-server run build
-    startCommand: node scripts/cloud-start.mjs
-    healthCheckPath: /api/healthz
+    startCommand: node index.js
+    healthCheckPath: /healthz
     envVars:
       - key: NODE_VERSION
         value: "22"
@@ -20,15 +20,17 @@ services:
       - key: CLOUD_CUTOVER_APPROVED
         value: "0"
       - key: PUBLIC_APP_URL
-        value: https://ah-sheli-telegram-bot.replit.app
+        value: https://yotibot-azbu.onrender.com
       - key: GOOGLE_CALENDAR_REDIRECT_URI
-        value: https://ah-sheli-telegram-bot.replit.app/api/mini-app/calendar/callback
+        value: https://yotibot-azbu.onrender.com/api/mini-app/calendar/callback
+      - key: CLERK_AUTH_MODE
+        value: external
       - key: DATABASE_URL
         sync: false
       - key: TELEGRAM_BOT_TOKEN
         sync: false
       - key: TELEGRAM_WEBHOOK_URL
-        value: https://yotibot-azbu.onrender.com/api/telegram/webhook
+        value: https://yotibot-azbu.onrender.com/telegram/webhook
       - key: SESSION_SECRET
         sync: false
       - key: GROQ_API_KEY

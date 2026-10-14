@@ -32,7 +32,7 @@ function startTelegramWorker() {
     const parsedWebhookUrl = new URL(webhookUrl);
     if (
       parsedWebhookUrl.protocol !== "https:" ||
-      !["/api/telegram/webhook", "/api/public/telegram/webhook"].includes(parsedWebhookUrl.pathname)
+      !["/telegram/webhook", "/api/telegram/webhook", "/api/public/telegram/webhook"].includes(parsedWebhookUrl.pathname)
     ) {
       throw new Error("The Telegram webhook URL has an invalid path or protocol.");
     }

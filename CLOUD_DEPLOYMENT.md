@@ -4,8 +4,9 @@ No external service, database, webhook or DNS setting has been changed.
 
 ## Runtime
 
-Use the repository root and Node 22. `render.yaml` defines a **paid, always-on**
-single-instance Node web service. Automatic deployment is disabled.
+Use the repository root and Node 22.18 or newer. `render.yaml` is a template
+for a **paid, always-on** single-instance service; do not provision it or change
+the current service plan without explicit approval. Automatic deployment is disabled.
 The API already supervises and restarts its Telegram worker in a child process;
 do not deploy a second bot service. Both use the same PostgreSQL database.
 The public server binds to the platform's `PORT`; the worker uses its existing
@@ -20,12 +21,15 @@ pnpm install --frozen-lockfile --prod=false
 pnpm --filter @workspace/api-server run build
 ```
 
-Start: `node scripts/cloud-start.mjs`
+Start: `node index.js`. Keep Render's Root Directory empty.
+The root launcher validates the production configuration before importing the
+built API. The API serves the existing website and Mini App and supervises one
+worker on port 18081. Never run a second bot command alongside it.
 
 ## Telegram webhook diagnosis and repair
 
 The approved Render Telegram endpoint is
-`https://yotibot-azbu.onrender.com/api/telegram/webhook`, not `/`.
+`https://yotibot-azbu.onrender.com/telegram/webhook`, not `/`.
 An HTTP 200 response containing `Yotibot is running!` is a placeholder response,
 not proof that this project's Telegram worker is processing messages.
 
@@ -35,11 +39,11 @@ Read-only check (uses the bot credential without printing it):
 node scripts/telegram-render-webhook.mjs --check
 ```
 
-When running `artifacts/ah-sheli-bot/index.js` directly rather than behind the
-Express API, its native health route is `/healthz`. The direct webhook route is
-`/telegram/webhook` when `TELEGRAM_WEBHOOK_URL` is configured with that path.
-The worker uses the configured URL's pathname; `/` and `/webhook` are not valid
-webhook paths for this entry point. No cloud launcher is needed for direct mode:
+The complete service exposes `/healthz` with the worker's ready status and
+`/telegram/webhook` through the authenticated worker relay. Existing API-prefixed
+aliases remain supported. Both health routes refuse to declare Production
+ready while the worker is unavailable. The helper's `--direct` option checks
+the root health endpoint; it does not require launching a separate worker:
 
 ```sh
 node scripts/telegram-render-webhook.mjs --check --direct
@@ -49,8 +53,8 @@ node scripts/telegram-render-webhook.mjs --apply --direct
 For direct repair, set `TELEGRAM_WEBHOOK_URL` to
 `https://yotibot-azbu.onrender.com/telegram/webhook` in the receiver's production
 environment. The repair still requires explicit cutover approval, a ready native
-worker and proof that the SQL secret matches the receiver. Direct mode does not
-serve the website/API and is not a replacement for their deployment.
+worker and proof that the SQL secret matches the receiver. Always run the
+complete service with `node index.js`, not the worker entry file alone.
 
 After stopping the previous worker and launching the real API/worker, run from
 the Render runtime with its production environment and database:
@@ -81,16 +85,17 @@ commands automatically or point this service at development data.
 
 ## Public domain and authentication
 
-The current public origin and Google callback are intentionally pinned to
-`https://ah-sheli-telegram-bot.replit.app`. Replit's hostname cannot simply be
-assigned to a Render/Railway server. External hosting preparation does **not**
-perform that domain migration.
+The approved external origin is `https://yotibot-azbu.onrender.com`. The pinned
+origins in server, browser and Telegram code now target it. This branch prepares
+the complete API, website, Mini App and supervised worker together. It does not
+activate the deployment or alter provider accounts.
 
-Before an actual cutover, obtain approval for the external/custom public domain,
-update the pinned origins in server, browser and Telegram code, Google Cloud's
-authorized redirect URI, Clerk's allowed production origins/proxy configuration,
-Whop return/webhook settings and TELEGRAM_WEBHOOK_URL together. Until then keep
-the existing service active and CLOUD_CUTOVER_APPROVED=0.
+Before cutover, configure Google Cloud's authorized redirect URI, an external
+Clerk application, Whop return/webhook settings and TELEGRAM_WEBHOOK_URL together.
+Replit-managed Clerk cannot be carried to external hosting by copying its keys.
+Verify preservation of existing SQL account links before replacing authentication
+keys. No tenant/user migration is performed by this branch. Keep the existing
+service active and CLOUD_CUTOVER_APPROVED=0 until all cutover checks pass.
 Google OAuth starts from the published app, not the development database.
 
 Clerk publishable keys must be available during the build. Whop needs its direct

@@ -1,4 +1,4 @@
-const CALLBACK = 'https://ah-sheli-telegram-bot.replit.app/api/mini-app/calendar/callback';
+const CALLBACK = 'https://yotibot-azbu.onrender.com/api/mini-app/calendar/callback';
 
 // Validate, never rewrite: changing a redirect only in the browser would break
 // the server's OAuth state/token exchange and conceal an outdated deployment.

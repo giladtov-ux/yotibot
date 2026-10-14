@@ -9,17 +9,21 @@ declare global {
     readonly BASE_URL: string;
     readonly VITE_CLERK_PUBLISHABLE_KEY: string;
     readonly VITE_CLERK_PROXY_URL: string;
+    readonly VITE_CLERK_AUTH_MODE: string;
   }
   interface ImportMeta {
     readonly env: ImportMetaEnv;
   }
 }
 
-const clerkPubKey = publishableKeyFromHost(
+const clerkPubKey = import.meta.env.VITE_CLERK_AUTH_MODE === "external"
+  ? import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
+  : publishableKeyFromHost(
   window.location.hostname,
   import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
 );
-const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
+const clerkProxyUrl = import.meta.env.VITE_CLERK_AUTH_MODE === "external"
+  ? undefined : import.meta.env.VITE_CLERK_PROXY_URL;
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 function SessionPresence() {

@@ -24,7 +24,7 @@ function decrypt(value: string): GoogleTokens {
   return JSON.parse(Buffer.concat([decipher.update(bytes.subarray(28)), decipher.final()]).toString("utf8"));
 }
 const digest = (value: string) => createHash("sha256").update(value).digest("hex");
-const publishedCalendarCallback = "https://ah-sheli-telegram-bot.replit.app/api/mini-app/calendar/callback";
+const publishedCalendarCallback = "https://yotibot-azbu.onrender.com/api/mini-app/calendar/callback";
 export function googleCalendarCallbackUrl() {
   // Fixed in every runtime; neither request headers nor environment overrides
   // can change the canonical public callback.

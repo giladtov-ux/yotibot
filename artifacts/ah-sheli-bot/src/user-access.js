@@ -3,7 +3,7 @@ import { sendAccessNotification } from "./access-notifications.js";
 
 export function landingPageUrl() {
   // Canonical production URL verified through deployment metadata.
-  const url = new URL("https://ah-sheli-telegram-bot.replit.app");
+  const url = new URL("https://yotibot-azbu.onrender.com");
   if (url.protocol !== "https:" || url.username || url.password) throw new Error("secure_website_origin_required");
   return url.origin;
 }

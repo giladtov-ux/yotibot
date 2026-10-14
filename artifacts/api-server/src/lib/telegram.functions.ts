@@ -1,6 +1,20 @@
 import type { Request, Response } from "express";
 export const BOT_INTERNAL_PORT = 18081;
 
+export async function telegramWorkerReady(request: typeof fetch = fetch): Promise<boolean> {
+  try {
+    const health = await request(`http://127.0.0.1:${BOT_INTERNAL_PORT}/healthz`, {
+      signal: AbortSignal.timeout(2_000),
+    });
+    const identity = await health.json();
+    return health.ok && identity !== null && typeof identity === "object"
+      && "service" in identity && identity.service === "ah-sheli-bot"
+      && "ready" in identity && identity.ready === true;
+  } catch {
+    return false;
+  }
+}
+
 // Only the internal bot port is reachable here. A Vite server can occupy this
 // port when the worker is absent, so identify the service before forwarding.
 export async function relayTelegramRequest(request: Request, response: Response, path: string) {

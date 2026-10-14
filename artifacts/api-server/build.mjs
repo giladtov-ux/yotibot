@@ -41,6 +41,7 @@ async function buildAll() {
         BASE_URL: "/",
         VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY || process.env.CLERK_PUBLISHABLE_KEY || "",
         VITE_CLERK_PROXY_URL: process.env.VITE_CLERK_PROXY_URL || "",
+        VITE_CLERK_AUTH_MODE: process.env.CLERK_AUTH_MODE || "managed",
       }),
       "process.env.NODE_ENV": JSON.stringify("production"),
     },

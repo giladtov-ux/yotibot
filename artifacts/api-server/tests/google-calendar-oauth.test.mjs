@@ -14,7 +14,7 @@ const originCode = await compile("../src/lib/billing-config.ts");
 const calendarCode = await compile("../src/lib/mini-app-calendar.ts");
 const routerCode = await compile("../src/routes/mini-app-calendar.ts");
 const { calendarAuthorizationUrl } = await import("../public/calendar-oauth-link.js");
-const publishedCallback = "https://ah-sheli-telegram-bot.replit.app/api/mini-app/calendar/callback";
+const publishedCallback = "https://yotibot-azbu.onrender.com/api/mini-app/calendar/callback";
 const obsoleteOrigin = `https://ah-sheli-telegram-bot.${["repl", "app"].join(".")}`;
 
 function fixture(overrides = {}) {
@@ -94,7 +94,7 @@ test("the actual connect router returns the canonical Google link accepted by th
   const res = response();
   await routes.get("POST /connect")(req, res);
   assert.equal(res.headers["Cache-Control"], "no-store");
-  const link = calendarAuthorizationUrl(res.body.url, "https://ah-sheli-telegram-bot.replit.app");
+  const link = calendarAuthorizationUrl(res.body.url, "https://yotibot-azbu.onrender.com");
   assert.equal(new URL(link).searchParams.get("redirect_uri"), publishedCallback);
   assert.equal(logs[0][0].redirectUri, publishedCallback);
   assert.ok(!JSON.stringify(logs).includes("state="));
@@ -105,7 +105,7 @@ test("the actual connect router returns the canonical Google link accepted by th
 
 test("the Mini App refuses legacy, foreign or duplicate callbacks instead of opening them", () => {
   const link = redirect => `https://accounts.google.com/o/oauth2/v2/auth?redirect_uri=${encodeURIComponent(redirect)}`;
-  const origin = "https://ah-sheli-telegram-bot.replit.app";
+  const origin = "https://yotibot-azbu.onrender.com";
   assert.equal(calendarAuthorizationUrl(link(publishedCallback), origin), link(publishedCallback));
   for (const bad of [
     link(`${obsoleteOrigin}/api/mini-app/calendar/callback`),
@@ -120,7 +120,7 @@ test("the Mini App refuses legacy, foreign or duplicate callbacks instead of ope
 test("preview advertises the canonical production origin and cannot create mismatched SQL state", async () => {
   const f = fixture({ NODE_ENV: "development", REPLIT_DEV_DOMAIN: "preview.example" });
   assert.equal(f.googleCalendarCallbackUrl(), publishedCallback);
-  assert.equal(f.websiteOrigin(), "https://ah-sheli-telegram-bot.replit.app");
+  assert.equal(f.websiteOrigin(), "https://yotibot-azbu.onrender.com");
   await assert.rejects(f.calendarConnectUrl("12345"), /calendar_production_required/);
   assert.equal(f.queries.length, 0);
   assert.equal(fixture({ GOOGLE_CALENDAR_REDIRECT_URI: ` ${publishedCallback} ` }).googleCalendarCallbackUrl(),

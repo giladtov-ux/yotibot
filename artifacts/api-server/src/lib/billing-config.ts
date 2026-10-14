@@ -1,5 +1,5 @@
-// Published origin obtained from deployment metadata, not a guessed repl domain.
-const publishedOrigin = "https://ah-sheli-telegram-bot.replit.app";
+// External production origin explicitly supplied and approved by the user.
+const publishedOrigin = "https://yotibot-azbu.onrender.com";
 export function websiteOrigin() {
   return publishedOrigin;
 }

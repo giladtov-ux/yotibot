@@ -763,8 +763,8 @@ $('#calendar-next').onclick=()=>moveCalendar(1);
 function moveCalendar(amount){const date=state.calendarDate;if(state.calendarMode==='month')date.setMonth(date.getMonth()+amount);else date.setDate(date.getDate()+amount*(state.calendarMode==='week'?7:1));renderCalendar();fetchEvents();}
 document.addEventListener('click',async(event)=>{
   if(event.target.closest('#connect-calendar')){
-    if(location.origin!=='https://ah-sheli-telegram-bot.replit.app'){
-      const appUrl='https://ah-sheli-telegram-bot.replit.app/app.html';
+    if(location.origin!=='https://yotibot-azbu.onrender.com'){
+      const appUrl='https://yotibot-azbu.onrender.com/app.html';
       if(window.Telegram?.WebApp?.openLink)window.Telegram.WebApp.openLink(appUrl);else window.location.assign(appUrl);
       return;
     }

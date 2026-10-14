@@ -9,6 +9,9 @@ import { processWhopWebhook } from "./lib/billing-runtime";
 import { clerkMiddleware } from "@clerk/express";
 import { publishableKeyFromHost } from "@clerk/shared/keys";
 import { CLERK_PROXY_PATH, clerkProxyMiddleware, getClerkProxyHost } from "./middlewares/clerkProxyMiddleware";
+import { websiteOrigin } from "./lib/billing-config";
+import telegramRouter from "./routes/public/telegram/webhook";
+import botHealthRouter from "./routes/bot-health";
 
 const app: Express = express();
 
@@ -31,7 +34,9 @@ app.use(
     },
   }),
 );
-app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
+if (process.env.CLERK_AUTH_MODE !== "external") {
+  app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
+}
 app.use(cors());
 app.disable("x-powered-by");
 app.post("/api/whop/webhook", express.raw({ type: "application/json", limit: "1mb" }), async (req, res) => {
@@ -48,7 +53,15 @@ app.post("/api/whop/webhook", express.raw({ type: "application/json", limit: "1m
 app.use(cookieParser());
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
-const emailSessionMiddleware = clerkMiddleware((req) => ({
+// Public receiver and readiness probes must not depend on an email session.
+app.use(botHealthRouter);
+app.use(telegramRouter);
+const emailSessionMiddleware = process.env.CLERK_AUTH_MODE === "external"
+  ? clerkMiddleware({
+    publishableKey: process.env.CLERK_PUBLISHABLE_KEY,
+    authorizedParties: [websiteOrigin()],
+  })
+  : clerkMiddleware((req) => ({
   publishableKey: publishableKeyFromHost(getClerkProxyHost(req) ?? "", process.env.CLERK_PUBLISHABLE_KEY),
 }));
 app.use((req, res, next) => {

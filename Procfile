@@ -1,1 +1,1 @@
-web: node scripts/cloud-start.mjs
+web: node index.js

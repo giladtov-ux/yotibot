@@ -4,17 +4,18 @@ import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import bootstrap from '../index.js';
 
-const { startBot } = bootstrap;
+const { startSystem } = bootstrap;
 
-test('root startup imports the existing worker once and awaits initialization', async () => {
+test('root startup imports the complete API once and awaits initialization', async () => {
   let calls = 0;
   let release;
   const loading = new Promise(resolve => { release = resolve; });
   let settled = false;
-  const started = startBot({
+  const started = startSystem({
     version: '22.18.0',
     env: { NODE_ENV: 'production', CLOUD_CUTOVER_APPROVED: '1' },
-    loadBot: () => { calls++; return loading; },
+    validateEnvironment: () => [],
+    loadServer: () => { calls++; return loading; },
   }).then(result => { settled = true; return result; });
   await Promise.resolve();
   assert.equal(calls, 1);
@@ -26,8 +27,8 @@ test('root startup imports the existing worker once and awaits initialization', 
 test('unsupported Node version is rejected before loading a worker', async () => {
   for (const version of ['20.19.0', '22.17.1', 'invalid']) {
     let called = false;
-    await assert.rejects(startBot({
-      version, env: {}, loadBot: () => { called = true; },
+    await assert.rejects(startSystem({
+      version, env: {}, loadServer: () => { called = true; },
     }), /22\.18/);
     assert.equal(called, false);
   }
@@ -35,24 +36,26 @@ test('unsupported Node version is rejected before loading a worker', async () =>
 
 test('unapproved production startup cannot initialize or register a bot', async () => {
   let called = false;
-  await assert.rejects(startBot({
+  await assert.rejects(startSystem({
     version: '24.0.0', env: { NODE_ENV: 'production' },
-    loadBot: () => { called = true; },
+    loadServer: () => { called = true; },
   }), /approve the production cutover/);
   assert.equal(called, false);
 });
 
 test('worker initialization failure is not converted into a successful startup', async () => {
   const failure = new Error('synthetic initialization failure');
-  await assert.rejects(startBot({
-    version: '22.18.0', env: {},
-    loadBot: async () => { throw failure; },
+  await assert.rejects(startSystem({
+    version: '22.18.0', env: { NODE_ENV: 'production', CLOUD_CUTOVER_APPROVED: '1' },
+    validateEnvironment: () => [],
+    loadServer: async () => { throw failure; },
   }), error => error === failure);
 });
 
-test('root entry targets the restored worker, not a catch-all test server', () => {
+test('root entry targets the complete API, not an independent worker or test server', () => {
   const entry = readFileSync(new URL('../index.js', import.meta.url), 'utf8');
-  assert.match(entry, /import\('\.\/artifacts\/ah-sheli-bot\/index\.js'\)/);
+  assert.match(entry, /import\('\.\/artifacts\/api-server\/dist\/index\.mjs'\)/);
+  assert.doesNotMatch(entry, /import\('\.\/artifacts\/ah-sheli-bot\/index\.js'\)/);
   assert.doesNotMatch(entry, /createServer|Yotibot is running!/);
   assert.doesNotMatch(entry, /setWebhook|drop_pending_updates/);
 });

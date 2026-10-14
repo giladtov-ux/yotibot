@@ -6,7 +6,7 @@ const router: IRouter = Router();
 function failure(req: Request, res: Response, error: unknown) {
   if (error instanceof Error && error.message === "calendar_production_required") {
     res.status(409).json({ error: "calendar_production_required",
-      message: "לחיבור היומן פתח את האפליקציה הפעילה: https://ah-sheli-telegram-bot.replit.app/app.html" });
+      message: "לחיבור היומן פתח את האפליקציה הפעילה: https://yotibot-azbu.onrender.com/app.html" });
     return;
   }
   const status = error && typeof error === "object" && "status" in error ? Number(error.status) : 503;

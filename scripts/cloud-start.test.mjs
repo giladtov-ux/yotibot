@@ -9,7 +9,10 @@ const valid = { CLOUD_CUTOVER_APPROVED: '1', NODE_ENV: 'production', PORT: '1000
   DATABASE_URL: 'synthetic-database', TELEGRAM_BOT_TOKEN: 'synthetic-token',
   SESSION_SECRET: 'synthetic-session', CLERK_SECRET_KEY: 'synthetic-clerk',
   CLERK_PUBLISHABLE_KEY: 'synthetic-public', GROQ_API_KEY: 'synthetic-ai',
-  TELEGRAM_WEBHOOK_URL: 'https://example.com/api/telegram/webhook' };
+  CLERK_AUTH_MODE: 'external',
+  PUBLIC_APP_URL: 'https://yotibot-azbu.onrender.com',
+  GOOGLE_CALENDAR_REDIRECT_URI: 'https://yotibot-azbu.onrender.com/api/mini-app/calendar/callback',
+  TELEGRAM_WEBHOOK_URL: 'https://yotibot-azbu.onrender.com/telegram/webhook' };
 
 test('approved complete cloud configuration passes without contacting external services', () => {
   assert.deepEqual(cloudEnvironmentErrors(valid), []);
@@ -23,8 +26,20 @@ test('Render blueprint and environment template use the same approved webhook as
 });
 test('cutover approval, database, credentials and platform port are required', () => {
   for (const key of ['CLOUD_CUTOVER_APPROVED', 'DATABASE_URL', 'TELEGRAM_BOT_TOKEN',
-    'SESSION_SECRET', 'CLERK_SECRET_KEY', 'CLERK_PUBLISHABLE_KEY', 'GROQ_API_KEY', 'PORT']) {
+    'SESSION_SECRET', 'CLERK_SECRET_KEY', 'CLERK_PUBLISHABLE_KEY', 'CLERK_AUTH_MODE',
+    'PUBLIC_APP_URL', 'GOOGLE_CALENDAR_REDIRECT_URI', 'GROQ_API_KEY', 'PORT']) {
     assert.ok(cloudEnvironmentErrors({ ...valid, [key]: '' }).length, key);
+  }
+});
+test('stale origins and a managed Clerk mode cannot activate the external service', () => {
+  for (const overrides of [
+    { PUBLIC_APP_URL: 'https://obsolete.example' },
+    { TELEGRAM_WEBHOOK_URL: 'https://obsolete.example/telegram/webhook' },
+    { GOOGLE_CALENDAR_REDIRECT_URI: 'https://obsolete.example/api/mini-app/calendar/callback' },
+    { CLERK_AUTH_MODE: 'managed' },
+    { VITE_CLERK_PUBLISHABLE_KEY: 'synthetic-mismatched-public-key' },
+  ]) {
+    assert.ok(cloudEnvironmentErrors({ ...valid, ...overrides }).length);
   }
 });
 test('unsafe webhook configuration is rejected without exposing its value', () => {

@@ -2,7 +2,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TelegramClient } from '../artifacts/ah-sheli-bot/src/telegram.js';
 
-export const RENDER_WEBHOOK = 'https://yotibot-azbu.onrender.com/api/telegram/webhook';
+export const RENDER_WEBHOOK = 'https://yotibot-azbu.onrender.com/telegram/webhook';
 export const DIRECT_RENDER_WEBHOOK = 'https://yotibot-azbu.onrender.com/telegram/webhook';
 
 function publicWebhookUrl(value) {
