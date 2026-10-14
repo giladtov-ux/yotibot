@@ -1,1 +1,0 @@
-{"version":3,"file":"miniAppItem.d.ts","sourceRoot":"","sources":["../../../src/generated/types/miniAppItem.ts"],"names":[],"mappings":"AAAA;;;;;;GAMG;AAEH,MAAM,WAAW,WAAW;IAC1B,EAAE,EAAE,MAAM,CAAC;IACX,IAAI,EAAE,MAAM,CAAC;IACb,OAAO,EAAE,OAAO,CAAC;IACjB,gBAAgB;IAChB,SAAS,CAAC,EAAE,MAAM,GAAG,IAAI,CAAC;IAC1B;;;;SAIK;IACL,KAAK,CAAC,EAAE,MAAM,GAAG,IAAI,CAAC;CACvB"}
