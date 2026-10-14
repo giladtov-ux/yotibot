@@ -3,6 +3,7 @@
 ענף בדיקה בלבד. הקבצים מסודרים כאן במבנה המקורי של הפרויקט, במקום ההעלאה השטוחה ושרת הבדיקה שהחזיר `Yotibot is running!`.
 
 ```text
+index.js                כניסה מהשורש ל־Render; מפעילה את הבוט הקיים
 artifacts/ah-sheli-bot/   הבוט האמיתי: index.js וקובצי src
 artifacts/api-server/    האתר, המיני־אפליקציה וממשקי השרת
 lib/                    ספריות משותפות והגדרות סכמת הנתונים
@@ -17,7 +18,7 @@ pnpm-lock.yaml          גרסאות התלויות
 pnpm install --frozen-lockfile
 pnpm --filter @workspace/ah-sheli-bot run check
 pnpm --filter @workspace/api-server run build
-node --test scripts/cloud-start.test.mjs scripts/telegram-render-webhook.test.mjs
+node --test scripts/cloud-start.test.mjs scripts/telegram-render-webhook.test.mjs scripts/render-root-start.test.mjs
 ```
 
 פקודות אלה אינן מיועדות להפעלת הבוט. אין להפעיל `index.js` בזמן בדיקת הענף עם טוקן הבוט הפעיל.
@@ -27,16 +28,19 @@ node --test scripts/cloud-start.test.mjs scripts/telegram-render-webhook.test.mj
 רק לאחר בדיקת הענף, אישור מעבר ועצירת הבוט הישן:
 
 - Node: גרסה 22.18 ומעלה.
-- Root Directory: `artifacts/ah-sheli-bot`.
+- Root Directory: להשאיר ריק (שורש המאגר).
 - Build Command: `npm install --global pnpm@10.26.1 && pnpm install --frozen-lockfile --prod=false`.
 - Start Command: `node index.js`.
 - Health Check Path: `/healthz`.
 - `NODE_ENV=production`.
+- `CLOUD_CUTOVER_APPROVED=1` רק אחרי אישור המעבר ועצירת הבוט הישן. הכניסה מהשורש חוסמת הפעלה ב־Production ללא אישור זה.
 - `TELEGRAM_WEBHOOK_URL=https://yotibot-azbu.onrender.com/telegram/webhook`.
 - `PORT` מסופק על ידי Render.
 - הגדר במנהל הסודות של Render את `TELEGRAM_BOT_TOKEN`, את `DATABASE_URL` של Production ואת מפתחות ספק ה־AI הקיים. שמור את `SESSION_SECRET` הקיים אם משתמשים בנתונים מוצפנים.
 
 הבוט רושם את ה־Webhook בעצמו באתחול, עם סוד האימות הקיים ב־SQL ובלי למחוק הודעות ממתינות. עלייה תקינה מחזירה ב־`/healthz` זיהוי `ah-sheli-bot` ומצב `ready: true`.
+
+קובץ `index.js` בשורש אינו שרת נוסף: הוא טוען את `artifacts/ah-sheli-bot/index.js` המקורי. לכן נתיב הקבלה נשאר `/telegram/webhook`, וכל לוגיקת הבוט וה־SQL נשארת ללא שינוי. יש להעביר את כל מבנה התיקיות שבענף — לא להעלות את הקבצים בצורה שטוחה.
 
 כלי בדיקה ללא שינוי ב־Webhook:
 
