@@ -1,0 +1,1 @@
+- [Telegram staging isolation](telegram-staging.md) — Staging uses a dedicated test bot token stored only in Development Secrets; never reuse the Production bot token.
