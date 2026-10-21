@@ -7,6 +7,7 @@ import { BOT_INTERNAL_PORT } from "./lib/telegram.functions";
 import { createWorkerRestartDelay } from "./lib/worker-restart";
 import { initializeBilling } from "./lib/billing-runtime";
 import { startSelfKeepAlive } from "./lib/self-keep-alive";
+import { isDevelopmentTelegramWebhook, shouldStartTelegramWorker } from "./lib/telegram-staging";
 
 const moduleDirectory = path.dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = path.resolve(moduleDirectory, "../../../");
@@ -20,7 +21,8 @@ let workerStartedAt = 0;
 let stopSelfKeepAlive = () => {};
 
 function startTelegramWorker() {
-  if (shuttingDown || botProcess || !process.env.TELEGRAM_BOT_TOKEN) return;
+  if (shuttingDown || botProcess || !process.env.TELEGRAM_BOT_TOKEN
+    || !shouldStartTelegramWorker(process.env)) return;
 
   const webhookUrl = process.env.TELEGRAM_WEBHOOK_URL?.trim();
   if (!webhookUrl) {
@@ -35,6 +37,10 @@ function startTelegramWorker() {
       !["/telegram/webhook", "/api/telegram/webhook", "/api/public/telegram/webhook"].includes(parsedWebhookUrl.pathname)
     ) {
       throw new Error("The Telegram webhook URL has an invalid path or protocol.");
+    }
+    if (process.env.NODE_ENV === "development"
+      && !isDevelopmentTelegramWebhook(webhookUrl, process.env.REPLIT_DEV_DOMAIN)) {
+      throw new Error("Staging Telegram webhooks must use this Replit development domain and /telegram/webhook.");
     }
   } catch (error) {
     logger.error({ err: error }, "Telegram webhook URL is invalid.");
@@ -112,8 +118,6 @@ apiServer = app.listen(port, (err) => {
 
   logger.info({ port }, "Server listening");
   void initializeBilling().catch(() => logger.warn({ code: "billing_not_ready" }, "Billing unavailable; existing bot remains running"));
-  if (process.env.NODE_ENV === "production") {
-    stopSelfKeepAlive = startSelfKeepAlive({ logger });
-    startTelegramWorker();
-  }
+  if (process.env.NODE_ENV === "production") stopSelfKeepAlive = startSelfKeepAlive({ logger });
+  if (shouldStartTelegramWorker(process.env)) startTelegramWorker();
 });

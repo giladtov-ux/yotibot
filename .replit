@@ -21,7 +21,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd phase-68-fix-restore-project-structure/yotibot-fix-restore-project-structure && env -u TELEGRAM_BOT_TOKEN -u TELEGRAM_WEBHOOK_URL -u CLOUD_CUTOVER_APPROVED NODE_ENV=development PORT=5000 BASE_PATH=/ pnpm --filter @workspace/api-server run start"
+args = "cd phase-68-fix-restore-project-structure/yotibot-fix-restore-project-structure && env -u CLOUD_CUTOVER_APPROVED TELEGRAM_STAGING_ENABLED=true TELEGRAM_WEBHOOK_URL=\"https://${REPLIT_DEV_DOMAIN}/telegram/webhook\" NODE_ENV=development PORT=5000 BASE_PATH=/ pnpm --filter @workspace/api-server run start"
 waitForPort = 5000
 
 [[ports]]

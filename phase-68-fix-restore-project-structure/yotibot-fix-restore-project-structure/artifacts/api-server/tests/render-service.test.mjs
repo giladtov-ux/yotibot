@@ -68,6 +68,33 @@ test('worker readiness validates the internal service identity and active state'
   }
   assert.equal(await telegramWorkerReady(async () => { throw Error('offline'); }), false);
 });
+test('staging Telegram worker requires an explicit development opt-in and the current HTTPS dev host', () => {
+  const staging = compile('lib/telegram-staging.ts', {}, {}, { URL });
+  const { shouldStartTelegramWorker, isDevelopmentTelegramWebhook } = staging;
+  assert.equal(shouldStartTelegramWorker({ NODE_ENV: 'development' }), false);
+  assert.equal(shouldStartTelegramWorker({
+    NODE_ENV: 'development', TELEGRAM_STAGING_ENABLED: 'false',
+  }), false);
+  assert.equal(shouldStartTelegramWorker({
+    NODE_ENV: 'development', TELEGRAM_STAGING_ENABLED: 'true',
+  }), true);
+  assert.equal(shouldStartTelegramWorker({ NODE_ENV: 'production' }), true);
+  assert.equal(isDevelopmentTelegramWebhook(
+    'https://staging.replit.dev/telegram/webhook', 'staging.replit.dev',
+  ), true);
+  assert.equal(isDevelopmentTelegramWebhook(
+    'https://production.example/telegram/webhook', 'staging.replit.dev',
+  ), false);
+  assert.equal(isDevelopmentTelegramWebhook(
+    'http://staging.replit.dev/telegram/webhook', 'staging.replit.dev',
+  ), false);
+  assert.equal(isDevelopmentTelegramWebhook(
+    'https://staging.replit.dev/api/telegram/webhook', 'staging.replit.dev',
+  ), false);
+  assert.equal(isDevelopmentTelegramWebhook(
+    'https://staging.replit.dev/telegram/webhook?redirect=1', 'staging.replit.dev',
+  ), false);
+});
 test('root receiver remains public while external email auth uses the configured tenant', () => {
   const app = source('app.ts');
   assert.ok(app.indexOf('app.use(telegramRouter)') < app.indexOf('const emailSessionMiddleware'));
