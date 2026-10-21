@@ -53,6 +53,9 @@ function fakeDatabase(initial) {
             else if (sql.startsWith("SELECT value FROM ah_sheli_state")) {
               return { rows: tx.state ? [{ value: plain(tx.state) }] : [] };
             }
+            else if (sql === "SELECT to_regclass('ah_sheli_list_shares') AS relation") {
+              return { rows: [{ relation: null }] };
+            }
             else if (sql.includes("INSERT INTO ah_sheli_reminders")) {
               const [id, chat_id, text, due_at, created_at, sent_at, last_attempt_at,
                 repeat_every_ms, remaining_occurrences] = args;

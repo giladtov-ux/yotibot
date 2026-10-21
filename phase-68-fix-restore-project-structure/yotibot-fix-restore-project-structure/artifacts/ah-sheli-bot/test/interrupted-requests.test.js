@@ -37,6 +37,8 @@ function fakeDatabase(initial = []) {
             transaction = JSON.parse(args[0]);
           } else if (sql.startsWith("SELECT value FROM ah_sheli_state")) {
             return { rows: transaction ? [{ value: structuredClone(transaction) }] : [] };
+          } else if (sql === "SELECT to_regclass('ah_sheli_list_shares') AS relation") {
+            return { rows: [{ relation: null }] };
           } else if (sql === "COMMIT") this.state = transaction;
           else if (sql !== "ROLLBACK") assert.fail(`Unexpected transaction query: ${sql}`);
           return { rows: [] };

@@ -4,39 +4,36 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
 const html = readFileSync(new URL('../public/index.html', import.meta.url), 'utf8');
+const billing = readFileSync(new URL('../public/billing.js', import.meta.url), 'utf8');
 
-test('public home contains the main, support and explicitly preview-only email surfaces', () => {
+test('public home contains the main, support, dashboard preview and account registration surfaces', () => {
   assert.match(html, /<html lang="he" dir="rtl">/);
-  for (const id of ['main-content', 'tab-features', 'tab-pricing', 'preview', 'support', 'personal-email-form']) {
+  for (const id of [
+    'main-content', 'tab-features', 'tab-pricing', 'preview', 'support',
+    'personal-area', 'billing-dialog', 'billing-registration-form',
+  ]) {
     assert.match(html, new RegExp(`id="${id}"`));
   }
-  assert.match(html, /type="email"/);
-  assert.match(html, /תצוגה בלבד/);
+  assert.match(html, /href="\/sign-up"/);
+  assert.match(html, /href="\/sign-in"/);
+  assert.match(html, /תצוגת דמו/);
+  assert.doesNotMatch(html, /id="personal-email-form"/);
 });
 
-test('email preview submit prevents navigation and never accesses network or storage', () => {
-  const source = html.match(
-    /document\.getElementById\('personal-email-form'\)\.addEventListener\('submit',[\s\S]*?\n    \}\);/,
+test('registration email is optional and is sent only by explicit registration submission', () => {
+  const form = html.match(/<form id="billing-registration-form"[\s\S]*?<\/form>/)?.[0];
+  assert.ok(form, 'the real registration form must be present');
+  assert.match(form, /<input name="email" type="email"/);
+  assert.match(form, /field-optional">לא חובה/);
+  assert.doesNotMatch(`${html}\n${billing}`, /\b(?:localStorage|sessionStorage)\b/);
+
+  const submitHandler = billing.match(
+    /form\.addEventListener\('submit', async \(event\) => \{[\s\S]*?\n  \}\);/,
   )?.[0];
-  assert.ok(source, 'the preview submit handler must remain present');
-  let handler;
-  let prevented = false;
-  const feedback = { textContent: '' };
-  const forbidden = () => { throw new Error('Preview must not send or persist user information'); };
-  const context = {
-    document: { getElementById: id => {
-      if (id === 'personal-email-form') return { addEventListener: (_, callback) => { handler = callback; } };
-      if (id === 'email-feedback') return feedback;
-      throw new Error(`Unexpected field: ${id}`);
-    } },
-    fetch: forbidden, XMLHttpRequest: forbidden,
-    localStorage: { setItem: forbidden }, sessionStorage: { setItem: forbidden },
-  };
-  vm.runInNewContext(source, context, { timeout: 500 });
-  handler({ preventDefault: () => { prevented = true; } });
-  assert.equal(prevented, true);
-  assert.match(feedback.textContent, /לא התחברתם/);
-  assert.match(feedback.textContent, /לא נשמר או נשלח/);
+  assert.ok(submitHandler, 'registration must have an explicit submit handler');
+  assert.match(submitHandler, /const email = fields\.email\.value\.trim\(\)/);
+  assert.match(submitHandler, /request\('register-user', \{\s*method: 'POST'/);
+  assert.match(submitHandler, /JSON\.stringify\(\{[^}]*email[^}]*\}\)/);
 });
 
 test('pricing selection remains a local illustration, not a payment operation', () => {

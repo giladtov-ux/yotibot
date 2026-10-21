@@ -190,8 +190,10 @@ async function processOwnerMessage(store, telegram, chatId, text, {
     phase = "assistant";
     mark = performance.now();
     await assertPermission();
-    const previousReminders = new Map(store.reminders.map(item => [item.id,
-      { dueAt: item.dueAt, text: item.text }]));
+    const previousReminders = new Map(
+      (Array.isArray(store?.reminders) ? store.reminders : [])
+        .map(item => [item.id, { dueAt: item.dueAt, text: item.text }]),
+    );
     const collected = telegramDaily
       ? { events: [], result: formatTelegramDailySummary(dailySnapshot, chatId, dailySummaryTime) }
       : await collectListReceipts(() => assistant(store, chatId, text, undefined, history,
@@ -231,10 +233,11 @@ async function processOwnerMessage(store, telegram, chatId, text, {
     } : store;
     let directDetails = null;
     if (telegramResponseStyle && !telegramDaily && !isSummaryRequest(text)) {
-      const freshReminder = store.reminders.find(item => item.chatId === chatId
-        && item.trackingTaskId && (!previousReminders.has(item.id)
-          || previousReminders.get(item.id).dueAt !== item.dueAt
-          || previousReminders.get(item.id).text !== item.text));
+      const freshReminder = (Array.isArray(store?.reminders) ? store.reminders : [])
+        .find(item => item.chatId === chatId
+          && item.trackingTaskId && (!previousReminders.has(item.id)
+            || previousReminders.get(item.id).dueAt !== item.dueAt
+            || previousReminders.get(item.id).text !== item.text));
       const freshTask = Array.isArray(receipt?.after) && /משימ|מטר/u.test(receipt.listName)
         ? receipt.after.find(item => !item.checked && (!previousIds.has(item.id)
           || receipt.before?.find(previous => previous.id === item.id)?.text !== item.text)) : null;

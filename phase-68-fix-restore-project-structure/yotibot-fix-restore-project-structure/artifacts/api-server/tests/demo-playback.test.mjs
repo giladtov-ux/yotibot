@@ -4,7 +4,10 @@ import test from "node:test";
 import vm from "node:vm";
 
 const html = readFileSync(new URL("../public/index.html", import.meta.url), "utf8");
-const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
+const script = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)]
+  .map(([, body]) => body)
+  .find(body => body.includes("const demoPlayback"));
+assert.ok(script, "the homepage must include its inline demo playback script");
 
 // Run the shipped inline script with deterministic timers and a small DOM.
 // This covers timer/interaction behavior without network or Telegram calls.
