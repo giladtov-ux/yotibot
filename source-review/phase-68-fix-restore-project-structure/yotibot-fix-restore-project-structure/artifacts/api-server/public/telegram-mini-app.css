@@ -1,0 +1,14 @@
+/* Applied only inside Telegram. Ordinary website layout stays unchanged. */
+html.telegram-mini-app body {
+  box-sizing: border-box;
+  min-height: var(--mini-app-height, 100dvh);
+  padding: var(--mini-safe-top, 0px) var(--mini-safe-right, 0px)
+    var(--mini-safe-bottom, 0px) var(--mini-safe-left, 0px);
+}
+html.telegram-mini-app .site-header { top: var(--mini-safe-top, 0px); }
+html.telegram-mini-app .billing-dialog {
+  box-sizing: border-box;
+  max-width: calc(100vw - var(--mini-safe-left, 0px) - var(--mini-safe-right, 0px) - 24px);
+  max-height: calc(var(--mini-app-height, 100dvh) - var(--mini-safe-top, 0px) - var(--mini-safe-bottom, 0px) - 24px);
+  overflow-y: auto;
+}

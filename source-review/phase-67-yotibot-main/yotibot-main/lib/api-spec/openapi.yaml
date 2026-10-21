@@ -1,0 +1,550 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+paths:
+  /onboarding/channels:
+    get:
+      operationId: getTelegramOnboarding
+      tags: [onboarding]
+      description: Public Telegram-only bot connection, without a database or external API lookup.
+      responses:
+        "200":
+          description: Official Telegram bot link
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TelegramOnboarding"
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /register-user:
+    post:
+      operationId: registerWebsiteUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebsiteRegistration"
+      responses:
+        "201":
+          description: Registration saved; Telegram verification required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegistrationStatus"
+  /registration:
+    get:
+      operationId: getWebsiteRegistration
+      responses:
+        "200":
+          description: Cookie-bound registration status, never a client payment claim
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegistrationStatus"
+  /registration/reset:
+    post:
+      operationId: resetWebsiteRegistration
+      responses:
+        "204":
+          description: Browser cookie cleared; no saved data deleted
+  /registration/verify:
+    post:
+      operationId: verifyWebsiteRegistration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TelegramVerification"
+      responses:
+        "200":
+          description: Private Telegram code verified for this browser registration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegistrationStatus"
+  /checkout:
+    post:
+      operationId: createSubscriptionCheckout
+      responses:
+        "200":
+          description: Verified Telegram account hosted Whop checkout
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HostedPayment"
+  /billing/portal:
+    post:
+      operationId: createSubscriptionPortal
+      responses:
+        "200":
+          description: Verified account hosted subscription management
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HostedPayment"
+  /tasks:
+    get:
+      operationId: getOpenTasks
+      summary: Open tasks only, authorized by Telegram identity and active access
+      responses:
+        "200":
+          description: Completed and deleted tasks are excluded from both items and count
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenTasks"
+        "401":
+          description: Telegram authentication required
+        "403":
+          description: Active access required
+        "503":
+          description: Authoritative task data unavailable
+  /mini-app/data:
+    get:
+      operationId: getMiniAppData
+      summary: Telegram-signed, subscription-authorized personal data
+      responses:
+        "200":
+          description: Only the authenticated Telegram user's records
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MiniAppData"
+  /mini-app/profile:
+    patch:
+      operationId: updateMiniAppProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MiniAppProfileInput"
+      responses:
+        "200":
+          description: Saved personal display preferences, not scheduling settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MiniAppProfile"
+  /mini-app/action:
+    post:
+      operationId: runMiniAppAction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MiniAppActionInput"
+      responses:
+        "200":
+          description: Persisted by the existing exclusive bot worker
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MiniAppData"
+  /mini-app/calendar/status:
+    get:
+      operationId: getMiniAppCalendarStatus
+      responses:
+        "200":
+          description: Per-user Google Calendar connection status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MiniAppCalendarStatus"
+  /mini-app/calendar/connect:
+    post:
+      operationId: connectMiniAppCalendar
+      responses:
+        "200":
+          description: Google consent URL with signed, single-use OAuth state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HostedPayment"
+  /mini-app/calendar/events:
+    get:
+      operationId: getMiniAppCalendarEvents
+      parameters:
+        - name: start
+          in: query
+          required: true
+          schema: { type: string, format: date-time }
+        - name: end
+          in: query
+          required: true
+          schema: { type: string, format: date-time }
+      responses:
+        "200":
+          description: Google events for the authenticated user's connected account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MiniAppCalendarEvents"
+  /mini-app/calendar/disconnect:
+    post:
+      operationId: disconnectMiniAppCalendar
+      responses:
+        "204":
+          description: Only this user's Google authorization removed
+  /email-auth/me:
+    get:
+      operationId: getEmailAccount
+      tags: [MiniApp]
+      responses:
+        "200":
+          description: Current verified email account and proven Telegram binding
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EmailAccountStatus" }
+  /email-auth/link:
+    post:
+      operationId: createEmailTelegramLink
+      tags: [MiniApp]
+      responses:
+        "200":
+          description: Short-lived Telegram link requiring explicit owner confirmation
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [url]
+                properties:
+                  url: { type: string }
+  /mini-app/changes:
+    get:
+      operationId: watchMiniAppChanges
+      tags: [MiniApp]
+      responses:
+        "200":
+          description: Private authenticated change notifications; read-only SQL polling
+          content:
+            text/event-stream:
+              schema: { type: string }
+  /mini-app/shares:
+    get:
+      operationId: getMiniAppShares
+      tags: [MiniApp]
+      responses:
+        "200":
+          description: Only shares owned by or explicitly granted to this user
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SharedLists" }
+    post:
+      operationId: createMiniAppShare
+      tags: [MiniApp]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ListShareInput" }
+      responses:
+        "200":
+          description: Persisted list permission and refreshed shares
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SharedLists" }
+  /mini-app/shares/{id}:
+    delete:
+      operationId: revokeMiniAppShare
+      tags: [MiniApp]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Updated shares after owner revocation or member departure
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SharedLists" }
+  /mini-app/shares/{id}/action:
+    post:
+      operationId: runMiniAppSharedAction
+      tags: [MiniApp]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MiniAppActionInput" }
+      responses:
+        "200":
+          description: Canonical bot writer completed; refreshed shared list from SQL
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SharedLists" }
+components:
+  schemas:
+    EmailAccountStatus:
+      type: object
+      required: [signedIn]
+      properties:
+        signedIn: { type: boolean }
+        verifiedEmail: { type: boolean }
+        email: { type: string }
+        telegramId: { type: [string, "null"] }
+        hasAccess: { type: boolean }
+    ListShareInput:
+      type: object
+      additionalProperties: false
+      required: [listName, memberTelegramId, role]
+      properties:
+        listName: { type: string, minLength: 1, maxLength: 60 }
+        memberTelegramId: { type: string, pattern: '^[1-9]\d{0,19}$' }
+        role: { type: string, enum: [viewer, editor] }
+    SharedLists:
+      type: object
+      required: [shares]
+      properties:
+        shares:
+          type: array
+          items:
+            type: object
+            required: [id, ownerId, memberId, listName, role, owned, items]
+            properties:
+              id: { type: string, format: uuid }
+              ownerId: { type: string }
+              memberId: { type: string }
+              listName: { type: string }
+              role: { type: string, enum: [viewer, editor] }
+              owned: { type: boolean }
+              items:
+                type: array
+                items: { $ref: "#/components/schemas/MiniAppItem" }
+    TelegramOnboarding:
+      type: object
+      required: [telegram]
+      properties:
+        telegram:
+          type: object
+          required: [available, url]
+          properties:
+            available: { type: boolean }
+            url: { type: string, format: uri }
+    MiniAppProfileInput:
+      type: object
+      additionalProperties: false
+      required: [name, gender, language, timezone]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        gender: { type: string, enum: [male, female, other, unspecified] }
+        language: { type: string, enum: [he, en, ar, ru] }
+        timezone: { type: string, maxLength: 80 }
+    MiniAppProfile:
+      allOf:
+        - $ref: "#/components/schemas/MiniAppProfileInput"
+        - type: object
+          required: [telegramId, access, expiresAt, isOwner]
+          properties:
+            telegramId: { type: string }
+            access: { type: string }
+            expiresAt: { type: [string, "null"] }
+            isOwner: { type: boolean }
+    MiniAppItem:
+      type: object
+      required: [id, text, checked]
+      properties:
+        id: { type: string }
+        text: { type: string }
+        checked: { type: boolean }
+        createdAt: { type: [number, "null"] }
+        dueAt: { type: [number, "null"], minimum: 0, maximum: 8640000000000000 }
+    MiniAppList:
+      type: object
+      required: [name, items]
+      properties:
+        name: { type: string }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/MiniAppItem" }
+    MiniAppReminder:
+      type: object
+      required: [id, text, dueAt, createdAt, sentAt, recurring, weekdays, hour, minute, repeatEveryMs, completed]
+      properties:
+        id: { type: string }
+        text: { type: string }
+        dueAt: { type: number }
+        createdAt: { type: number }
+        sentAt: { type: [number, "null"] }
+        recurring: { type: boolean }
+        weekdays:
+          type: array
+          items: { type: integer, minimum: 0, maximum: 6 }
+        hour: { type: [integer, "null"] }
+        minute: { type: [integer, "null"] }
+        repeatEveryMs: { type: [number, "null"] }
+        completed: { type: boolean }
+    OpenTask:
+      type: object
+      required: [id, listName, text, checked, status, createdAt]
+      properties:
+        id: { type: string }
+        listName: { type: string }
+        text: { type: string }
+        checked: { type: boolean, enum: [false] }
+        status: { type: string, enum: [open, pending] }
+        createdAt: { type: [number, "null"] }
+        dueAt: { type: [number, "null"], minimum: 0, maximum: 8640000000000000 }
+    OpenTasks:
+      type: object
+      required: [tasks, count]
+      properties:
+        tasks:
+          type: array
+          items: { $ref: "#/components/schemas/OpenTask" }
+        count: { type: integer, minimum: 0 }
+    MiniAppData:
+      type: object
+      required: [profile, lists, reminders]
+      properties:
+        profile: { $ref: "#/components/schemas/MiniAppProfile" }
+        tasks:
+          type: array
+          description: Active tasks only; completed history remains in lists
+          items: { $ref: "#/components/schemas/OpenTask" }
+        lists:
+          type: array
+          items: { $ref: "#/components/schemas/MiniAppList" }
+        reminders:
+          type: array
+          items: { $ref: "#/components/schemas/MiniAppReminder" }
+    MiniAppActionInput:
+      type: object
+      additionalProperties: false
+      required: [requestId, entity, action]
+      properties:
+        requestId: { type: string, format: uuid }
+        entity: { type: string, enum: [list, item, reminder] }
+        action: { type: string, enum: [create, update, delete, complete] }
+        id: { type: string, maxLength: 100 }
+        listName: { type: string, minLength: 1, maxLength: 60 }
+        text: { type: string, minLength: 1, maxLength: 300 }
+        checked: { type: boolean }
+        date: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+        dueAt: { type: [number, "null"], minimum: 0, maximum: 8640000000000000, description: Optional task deadline; null clears it. Does not create a calendar event. }
+        hour: { type: integer, minimum: 0, maximum: 23 }
+        minute: { type: integer, minimum: 0, maximum: 59 }
+        weekdays:
+          type: array
+          maxItems: 7
+          uniqueItems: true
+          items: { type: integer, minimum: 0, maximum: 6 }
+    MiniAppCalendarStatus:
+      type: object
+      required: [configured, connected]
+      properties:
+        configured: { type: boolean }
+        connected: { type: boolean }
+    MiniAppCalendarEvent:
+      type: object
+      required: [id, title, start, end, allDay]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        start: { type: string }
+        end: { type: string }
+        allDay: { type: boolean }
+    MiniAppCalendarEvents:
+      type: array
+      items: { $ref: "#/components/schemas/MiniAppCalendarEvent" }
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    WebsiteRegistration:
+      type: object
+      additionalProperties: false
+      required: [telegram_id, phone, name, email, plan_tier]
+      properties:
+        telegram_id:
+          type: string
+          pattern: "^[1-9][0-9]{0,15}$"
+        phone:
+          type: string
+          minLength: 7
+          maxLength: 25
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        plan_tier:
+          type: string
+          enum: [Basic, Pro, Unlimited]
+    RegistrationStatus:
+      type: object
+      required: [state, plan_tier, telegram_url, expires_at, billing_available, access_status, payment_mode, has_customer, code_sent]
+      properties:
+        state:
+          type: string
+          enum: [awaiting_telegram, pending_approval, ready_for_checkout, checkout_pending, active, expired]
+        plan_tier:
+          type: string
+          enum: [Basic, Pro, Unlimited]
+        telegram_url:
+          type: [string, "null"]
+        expires_at:
+          type: [string, "null"]
+          format: date-time
+        billing_available:
+          type: boolean
+        access_status:
+          type: [string, "null"]
+        payment_mode:
+          type: string
+          enum: [test, live]
+        has_customer:
+          type: boolean
+        code_sent:
+          type: boolean
+    TelegramVerification:
+      type: object
+      additionalProperties: false
+      required: [code]
+      properties:
+        code:
+          type: string
+          pattern: "^[0-9]{8}$"
+    HostedPayment:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+          format: uri
+

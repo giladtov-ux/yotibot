@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#07152b">
+  <link rel="icon" href="brand/ah-sheli-logo-yellow-black.png" type="image/png">
+  <title>אח שלי — המרחב שלי</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="telegram-mini-app.js"></script>
+  <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="brand-colors.css">
+  <link rel="stylesheet" href="channel-onboarding.css">
+</head>
+<body>
+  <div class="app-frame">
+    <header class="app-header">
+      <a class="brand" href="index.html?onboarding=1" target="_blank" rel="noopener noreferrer" aria-label="אח שלי, פתיחת האתר בחלון חיצוני"><img src="brand/ah-sheli-logo-yellow-black.png" alt="אח שלי"></a>
+      <div class="head-greeting"><strong id="greeting">המרחב שלי</strong><span>הדברים הקטנים, במקום אחד</span></div>
+      <button class="icon-button menu-trigger" id="menu-trigger" type="button" aria-label="פתיחת תפריט" aria-expanded="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>
+      </button>
+      <div class="menu-popover" id="menu-popover" hidden>
+        <button type="button" data-menu="share"><svg viewBox="0 0 24 24"><path d="M12 16V3m0 0L7 8m5-5 5 5M5 13v6h14v-6"/></svg>שיתוף</button>
+        <button type="button" data-menu="reload"><svg viewBox="0 0 24 24"><path d="M20 7v5h-5M20 12a8 8 0 1 1-2.3-5.7L20 9"/></svg>טעינה מחדש</button>
+        <a href="terms.html"><svg viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H7zM15 3v5h5M10 13h6m-6 4h6"/></svg>תנאי שימוש</a>
+        <a href="privacy.html"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11Z"/><path d="m9 12 2 2 4-4"/></svg>מדיניות פרטיות</a>
+      </div>
+    </header>
+    <main id="main" class="main-content">
+      <div class="app-alert" id="app-alert" role="status" aria-live="polite" hidden></div>
+      <section class="view active" id="view-profile" aria-labelledby="title-profile" hidden>
+        <div class="section-title"><div><span class="eyebrow">נעים להכיר</span><h1 id="title-profile">הפרופיל שלי</h1></div><span class="title-mark">א</span></div>
+        <div class="paper-card profile-card">
+          <form id="profile-form">
+            <label class="field"><span>שם פרטי</span><input id="profile-name" name="name" maxlength="100" required autocomplete="given-name" placeholder="איך לקרוא לך?"></label>
+            <label class="field"><span>מגדר</span><select id="profile-gender" name="gender"><option value="unspecified">לא צוין</option><option value="female">נקבה</option><option value="male">זכר</option><option value="other">אחר</option></select></label>
+            <label class="field"><span>שפה</span><select id="profile-language" name="language"><option value="he">עברית</option><option value="en">English</option><option value="ar">العربية</option><option value="ru">Русский</option></select></label>
+            <label class="field"><span>אזור זמן לתצוגה</span><select id="profile-timezone" name="timezone"><option value="Asia/Jerusalem">Asia/Jerusalem</option><option value="Europe/London">Europe/London</option><option value="Europe/Paris">Europe/Paris</option><option value="America/New_York">America/New_York</option><option value="UTC">UTC</option></select></label>
+            <p class="item-meta">התזכורות ממשיכות להישלח לפי שעון ישראל.</p>
+            <div class="form-footer"><span class="save-status" id="profile-status" aria-live="polite"></span><button class="button button-pink" type="submit">שמירת פרטים</button></div>
+          </form>
+          <div class="account-note" id="account-note"></div>
+          <section class="account-link-panel" id="account-link-panel" aria-live="polite"></section>
+        </div>
+        <section class="shares-panel" aria-labelledby="shares-heading">
+          <div class="section-title"><div><span class="eyebrow">ביחד, אם תרצו</span><h2 id="shares-heading">שיתוף רשימות</h2></div></div>
+          <div id="shares-content" class="shares-content"></div>
+        </section>
+      </section>
+      <section class="view" id="view-lists" aria-labelledby="title-lists" hidden>
+        <div class="section-title"><div><span class="eyebrow">כל מה שצריך לזכור</span><h1 id="title-lists">הרשימות שלי</h1></div><button class="button button-pink compact" id="new-list">רשימה חדשה <span class="plus">+</span></button></div>
+        <div id="lists-content" class="view-content"></div>
+      </section>
+      <section class="view" id="view-calendar" aria-labelledby="title-calendar" hidden>
+        <div class="section-title"><div><span class="eyebrow">מבט על השבוע</span><h1 id="title-calendar">לוח שנה</h1></div></div>
+        <div class="calendar-connect paper-card" id="calendar-connect"></div>
+        <div class="calendar-toolbar">
+          <button class="button button-outline today-button" id="calendar-today">היום</button>
+          <div class="date-nav"><button class="icon-button" id="calendar-prev" aria-label="התקופה הקודמת"><svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></button><button class="icon-button" id="calendar-next" aria-label="התקופה הבאה"><svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button></div>
+          <strong id="calendar-label"></strong>
+        </div>
+        <div class="segmented" role="group" aria-label="תצוגת לוח שנה"><button data-calendar-view="month">חודש</button><button data-calendar-view="week" class="selected">שבוע</button><button data-calendar-view="day">יום</button></div>
+        <div class="calendar-grid paper-card" id="calendar-grid"></div>
+        <div class="calendar-legend"><i></i>תזכורות <span class="event-dot"></span>אירועים</div>
+        <div id="calendar-events" class="event-list"></div>
+      </section>
+      <section class="view" id="view-reminders" aria-labelledby="title-reminders" hidden>
+        <div class="section-title"><div><span class="eyebrow">בזמן שלך</span><h1 id="title-reminders">תזכורות</h1></div><button class="button button-pink compact" id="new-reminder">תזכורת חדשה <span class="plus">+</span></button></div>
+        <div class="filter-row" role="group" aria-label="סינון תזכורות"><button class="chip selected" data-reminder-filter="active">קרובות</button><button class="chip" data-reminder-filter="history">היסטוריה</button></div>
+        <div id="reminders-content" class="view-content"></div>
+      </section>
+      <section class="view" id="view-tasks" aria-labelledby="title-tasks" hidden>
+        <div class="section-title"><div><span class="eyebrow">צעד קטן קדימה</span><h1 id="title-tasks">משימות ומטרות</h1></div><button class="button button-pink compact" id="new-task">משימה חדשה <span class="plus">+</span></button></div>
+        <div class="task-list-switch" id="task-list-switch"></div>
+        <div class="filter-row" role="group" aria-label="סינון משימות"><button class="chip selected" data-task-filter="active">פעילות</button><button class="chip" data-task-filter="history">היסטוריה</button></div>
+        <div id="tasks-content" class="view-content"></div>
+      </section>
+      <div class="loading-state" id="loading-state" aria-live="polite">
+        <div class="skeleton heading"></div><div class="skeleton line"></div><div class="skeleton line short"></div><div class="skeleton card"></div><p>מסדרים את הדברים שלך…</p>
+      </div>
+      <section class="locked-state" id="locked-state" hidden>
+        <img src="brand/ah-sheli-logo-yellow-black.png" alt="" class="locked-logo">
+        <span class="eyebrow">המרחב האישי שלך</span><h1>נכנסים בדוא״ל,<br>ומחברים Telegram</h1>
+        <p>אחרי אימות כתובת הדוא״ל, מחברים את חשבון Telegram כדי לפתוח את הנתונים האישיים. החיבור דורש אישור מפורש בתוך Telegram.</p>
+        <div class="locked-actions"><a class="button button-pink" href="/sign-in">כניסה בדוא״ל</a><a class="button button-outline" href="/sign-up">יצירת חשבון</a><button class="button button-outline" id="locked-link-telegram" type="button" hidden>חיבור חשבון Telegram</button><button class="button button-outline" id="locked-email-signout" type="button" hidden>יציאה מהחשבון</button><a class="button button-outline" href="index.html?onboarding=1">מסלולים ורכישה</a></div>
+        <p class="auth-feedback" id="locked-auth-feedback" role="status" aria-live="polite"></p>
+      </section>
+      <section class="error-state" id="error-state" hidden>
+        <div class="error-illustration" aria-hidden="true"><span>!</span></div><h2>לא הצלחנו לטעון את המרחב</h2><p id="error-message">בדקי את החיבור ונסי שוב.</p><button class="button button-outline" id="retry-load">לנסות שוב</button>
+      </section>
+    </main>
+    <nav class="bottom-nav" aria-label="ניווט ראשי">
+      <button class="nav-item selected" data-tab="profile" aria-current="page"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.6-4 2.9-6 7-6s6.4 2 7 6"/></svg><span>פרופיל</span></button>
+      <button class="nav-item" data-tab="lists"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 3h6v3H9zM8 11h8M8 15h8"/></svg><span>רשימות</span></button>
+      <button class="nav-item" data-tab="calendar"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 10h18M8 14h2m4 0h2m-8 3h2"/></svg><span>לוח שנה</span></button>
+      <button class="nav-item" data-tab="reminders"><svg viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/></svg><span>תזכורות</span></button>
+      <button class="nav-item" data-tab="tasks"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></svg><span>מטרות</span></button>
+    </nav>
+  </div>
+  <dialog id="edit-dialog" class="edit-dialog"><form id="edit-form" method="dialog"><div class="dialog-heading"><div><span class="eyebrow" id="dialog-kicker">המרחב שלך</span><h2 id="dialog-title">פריט חדש</h2></div><button type="button" class="icon-button" data-close-dialog aria-label="סגירה">×</button></div><div id="dialog-fields"></div><p class="dialog-error" id="dialog-error" role="alert" hidden></p><div class="dialog-actions"><button type="button" class="button button-outline" data-close-dialog>ביטול</button><button type="submit" class="button button-pink" id="dialog-submit">שמירה</button></div></form></dialog>
+  <dialog id="confirm-dialog" class="edit-dialog confirm-dialog"><form method="dialog"><div class="dialog-heading"><div><span class="eyebrow">רק לוודא</span><h2 id="confirm-title">למחוק את הפריט?</h2></div></div><p id="confirm-copy"></p><p class="dialog-error" id="confirm-error" role="alert" hidden></p><div class="dialog-actions"><button type="button" class="button button-outline" data-close-dialog>ביטול</button><button type="submit" class="button button-danger" id="confirm-submit">מחיקה</button></div></form></dialog>
+  <script src="mini-app-navigation.js"></script>
+  <script src="channel-onboarding.js" defer></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
