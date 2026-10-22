@@ -134,3 +134,17 @@ mtime_ms = 1792657743496
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aa92bd01-385d-4484-80d2-b8a32576dccf/ff3040f2-aefa-4058-b21d-92dedcf9bbc3/566a9655-d74e-4b5c-b48c-6708047b3246"
 storage_version_token = "1792657758642461"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "hPuDS71NA8vABS6_vCmTx"
+uri = "file://phase-68-fix-restore-project-structure/yotibot-fix-restore-project-structure/docs/phase-111-dedup-and-sandbox-verification.md"
+type = "text"
+title = "Phase 111 Deduplication and Whop Sandbox Verification"
+description = "Offline Whop mock results, deduplication test results, full-suite outcomes, and disclosure of the database-backed test boundary incident."
+logical_id = "6dafde95-1535-4645-bac7-f3da7ed9aeb4"
+content_hash = "sha256:5b3c16a027b08dda00026ee86b8eedae4963be4b94805b181bfd0971efc8b6ad"
+size = 7404
+mtime_ms = 1792658250051
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aa92bd01-385d-4484-80d2-b8a32576dccf/6dafde95-1535-4645-bac7-f3da7ed9aeb4/a693b093-dd6e-440a-a13f-35bc961ee81b"
+storage_version_token = "1792658269464866"
+content_type = "text/markdown"
