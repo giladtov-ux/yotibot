@@ -42,4 +42,10 @@ A Production restore is a separate, high-impact operation. Before any such actio
 - Runbook prepared.
 - External Production provider and backup policy: not verified.
 - Production backup or restore: not executed.
-- Isolated restore drill: pending operator access and explicit approval.
+- Isolated restore drill against Production: pending operator access and explicit approval.
+
+## Phase 106 isolated simulation (2026-10-22)
+
+To exercise the technical backup/restore checks without touching Production, a temporary PostgreSQL 16 cluster was started on loopback using no Production or Replit database credentials. A small synthetic fixture (two fake Telegram users and one fake reminder, with constraints and an index) was dumped in PostgreSQL custom format and restored into a separate temporary recovery database.
+
+The restored database name, two expected tables, bounded row counts, primary/check constraints, and index validity all passed. The local restore completed in under one second. The temporary cluster and dump were removed after verification. No Production endpoint, backup, database, customer data, webhook, payment, or secret was accessed; this simulation does not establish Production backup availability or Production RPO/RTO.
