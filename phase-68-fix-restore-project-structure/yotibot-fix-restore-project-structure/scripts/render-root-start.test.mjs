@@ -5,6 +5,13 @@ import { spawnSync } from 'node:child_process';
 import bootstrap from '../index.js';
 
 const { startSystem } = bootstrap;
+const approvedEgress = {
+  EGRESS_APPROVED: '1',
+  EGRESS_APPROVAL_ENV: 'production',
+  EGRESS_APPROVED_BY: 'local-test',
+  EGRESS_APPROVAL_REF: 'TEST-109',
+  EGRESS_ALLOWED_TARGETS: 'api.telegram.org:443',
+};
 
 test('root startup imports the complete API once and awaits initialization', async () => {
   let calls = 0;
@@ -13,7 +20,7 @@ test('root startup imports the complete API once and awaits initialization', asy
   let settled = false;
   const started = startSystem({
     version: '22.18.0',
-    env: { NODE_ENV: 'production', CLOUD_CUTOVER_APPROVED: '1' },
+    env: { ...approvedEgress, NODE_ENV: 'production', CLOUD_CUTOVER_APPROVED: '1' },
     validateEnvironment: () => [],
     loadServer: () => { calls++; return loading; },
   }).then(result => { settled = true; return result; });
@@ -37,7 +44,7 @@ test('unsupported Node version is rejected before loading a worker', async () =>
 test('unapproved production startup cannot initialize or register a bot', async () => {
   let called = false;
   await assert.rejects(startSystem({
-    version: '24.0.0', env: { NODE_ENV: 'production' },
+    version: '24.0.0', env: { ...approvedEgress, NODE_ENV: 'production' },
     loadServer: () => { called = true; },
   }), /approve the production cutover/);
   assert.equal(called, false);
@@ -46,7 +53,8 @@ test('unapproved production startup cannot initialize or register a bot', async 
 test('worker initialization failure is not converted into a successful startup', async () => {
   const failure = new Error('synthetic initialization failure');
   await assert.rejects(startSystem({
-    version: '22.18.0', env: { NODE_ENV: 'production', CLOUD_CUTOVER_APPROVED: '1' },
+    version: '22.18.0',
+    env: { ...approvedEgress, NODE_ENV: 'production', CLOUD_CUTOVER_APPROVED: '1' },
     validateEnvironment: () => [],
     loadServer: async () => { throw failure; },
   }), error => error === failure);
@@ -74,6 +82,6 @@ test('node index.js from repository root rejects unapproved startup without secr
   });
   assert.equal(child.status, 1);
   assert.equal(child.stdout, '');
-  assert.match(child.stderr, /production cutover approval/);
+  assert.match(child.stderr, /egress authorization/iu);
   assert.doesNotMatch(child.stderr, /Yotibot is running!/);
 });

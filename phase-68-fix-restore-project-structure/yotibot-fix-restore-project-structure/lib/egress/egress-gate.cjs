@@ -2,16 +2,22 @@
 
 const dns = require("node:dns");
 const dgram = require("node:dgram");
+const childProcess = require("node:child_process");
+const fs = require("node:fs");
 const http = require("node:http");
 const http2 = require("node:http2");
 const https = require("node:https");
 const net = require("node:net");
+const path = require("node:path");
 const tls = require("node:tls");
 const { syncBuiltinESMExports } = require("node:module");
+const { fileURLToPath } = require("node:url");
+const workerThreads = require("node:worker_threads");
 
 const GATE_SYMBOL = Symbol.for("ah-sheli.egress-gate");
 const HOOKS_SYMBOL = Symbol.for("ah-sheli.egress-hooks-installed");
 const SIGNAL_SYMBOL = Symbol.for("ah-sheli.egress-kill-signal-installed");
+const WORKER_SIGNAL_SYMBOL = Symbol.for("ah-sheli.egress-worker-kill-signal-installed");
 
 class EgressDeniedError extends Error {
   constructor(code = "EGRESS_DENIED") {
@@ -54,6 +60,28 @@ function parseAllowedTarget(value) {
   return { host, port, key: targetKey(host, port) };
 }
 
+function parseBrowserOrigins(value, allowedTargets) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return Object.freeze([]);
+  const entries = raw.split(",");
+  if (entries.some(entry => !entry.trim())) throw new EgressConfigurationError();
+  const origins = entries.map(entry => {
+    let url;
+    try { url = new URL(entry.trim()); } catch { throw new EgressConfigurationError(); }
+    if (!["https:", "wss:", "http:", "ws:"].includes(url.protocol)
+      || url.username || url.password || url.pathname !== "/" || url.search || url.hash) {
+      throw new EgressConfigurationError();
+    }
+    const host = normalizeHost(url.hostname);
+    const secure = url.protocol === "https:" || url.protocol === "wss:";
+    if (!secure && !isLoopbackHost(host)) throw new EgressConfigurationError();
+    const port = Number(url.port || (secure ? 443 : 80));
+    if (!allowedTargets.has(targetKey(host, port))) throw new EgressConfigurationError();
+    return `${url.protocol}//${url.host}`;
+  });
+  return Object.freeze([...new Set(origins)].sort());
+}
+
 function targetKey(host, port) {
   return `${host.includes(":") ? `[${host}]` : host}:${Number(port)}`;
 }
@@ -88,12 +116,14 @@ function createEgressPolicy(env = {}) {
   const targets = rawTargets.map(parseAllowedTarget);
   const keys = [...new Set(targets.map(target => target.key))].sort();
   if (keys.length === 0) throw new EgressConfigurationError();
+  const targetSet = new Set(keys);
   return Object.freeze({
     approved: true,
     environment,
     approvalRef,
     approvedBy,
     targets: Object.freeze(keys),
+    browserOrigins: parseBrowserOrigins(env.EGRESS_BROWSER_ALLOWED_ORIGINS, targetSet),
   });
 }
 
@@ -113,10 +143,11 @@ function normalizeTarget(target, defaultProtocol = "https:") {
     } catch {
       throw new EgressDeniedError("EGRESS_TARGET_INVALID");
     }
-    if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) {
+    if (!["http:", "https:", "ws:", "wss:"].includes(url.protocol) || url.username || url.password) {
       throw new EgressDeniedError("EGRESS_TARGET_INVALID");
     }
-    const port = Number(url.port || (url.protocol === "https:" ? 443 : 80));
+    const secure = url.protocol === "https:" || url.protocol === "wss:";
+    const port = Number(url.port || (secure ? 443 : 80));
     return { host: normalizeHost(url.hostname), port };
   }
   if (!target || typeof target !== "object") {
@@ -126,8 +157,12 @@ function normalizeTarget(target, defaultProtocol = "https:") {
     throw new EgressDeniedError("EGRESS_UNIX_SOCKET_BLOCKED");
   }
   const protocol = target.protocol || defaultProtocol;
+  if (!["http:", "https:", "ws:", "wss:"].includes(protocol)) {
+    throw new EgressDeniedError("EGRESS_TARGET_INVALID");
+  }
   const host = normalizeHost(target.hostname || target.host || "localhost");
-  const port = Number(target.port || (protocol === "https:" ? 443 : 80));
+  const secure = protocol === "https:" || protocol === "wss:";
+  const port = Number(target.port || (secure ? 443 : 80));
   if (!host || !Number.isInteger(port) || port < 1 || port > 65_535) {
     throw new EgressDeniedError("EGRESS_TARGET_INVALID");
   }
@@ -140,6 +175,9 @@ class EgressGate {
     this.allowedTargets = new Set(policy.targets);
     this.tripped = false;
     this.activeResources = new Set();
+    this.children = new Set();
+    this.workers = new Set();
+    this.tripListeners = new Set();
   }
 
   assertStartupAuthorized() {
@@ -170,9 +208,14 @@ class EgressGate {
     return true;
   }
 
+  assertCanSpawnGuardedEntry() {
+    if (!this.policy.approved) throw new EgressDeniedError("EGRESS_AUTHORIZATION_REQUIRED");
+    if (this.tripped) throw new EgressDeniedError("EGRESS_KILL_SWITCH_ACTIVE");
+  }
+
   track(target, resource) {
-    const authorization = this.authorize(target);
-    if (!authorization.external || !resource) return () => {};
+    this.authorize(target);
+    if (!resource) return () => {};
     this.activeResources.add(resource);
     let released = false;
     return () => {
@@ -180,6 +223,37 @@ class EgressGate {
       released = true;
       this.activeResources.delete(resource);
     };
+  }
+
+  registerChild(child) {
+    if (!child || typeof child.kill !== "function") {
+      throw new TypeError("An egress-managed child process is required.");
+    }
+    this.children.add(child);
+    const release = () => this.children.delete(child);
+    child.once?.("exit", release);
+    if (this.tripped) {
+      try { child.kill("SIGUSR2"); } catch { /* The child may already have exited. */ }
+    }
+    return release;
+  }
+
+  registerWorker(worker) {
+    this.workers.add(worker);
+    const release = () => this.workers.delete(worker);
+    worker.once?.("exit", release);
+    if (this.tripped) void worker.terminate().catch(() => {});
+    return release;
+  }
+
+  onTrip(listener) {
+    if (typeof listener !== "function") throw new TypeError("A kill-switch listener is required.");
+    if (this.tripped) {
+      listener();
+      return () => {};
+    }
+    this.tripListeners.add(listener);
+    return () => this.tripListeners.delete(listener);
   }
 
   trip() {
@@ -194,6 +268,17 @@ class EgressGate {
         else if (typeof resource.close === "function") resource.close();
       } catch { /* Continue tripping the remaining outbound resources. */ }
     }
+    for (const child of [...this.children]) {
+      try { child.kill("SIGUSR2"); } catch { /* Continue tripping remaining children. */ }
+    }
+    for (const worker of [...this.workers]) {
+      try { worker.postMessage({ type: "AH_SHELI_EGRESS_KILL_SWITCH" }); } catch { /* Continue tripping workers. */ }
+      try { void worker.terminate().catch(() => {}); } catch { /* Continue tripping remaining workers. */ }
+    }
+    for (const listener of [...this.tripListeners]) {
+      try { listener(); } catch { /* The egress latch stays tripped if shutdown cleanup fails. */ }
+    }
+    this.tripListeners.clear();
     return resources.length;
   }
 
@@ -201,7 +286,7 @@ class EgressGate {
     return Object.freeze({
       approved: this.policy.approved,
       tripped: this.tripped,
-      activeExternalRequests: this.activeResources.size,
+      activeRequests: this.activeResources.size,
       targetCount: this.allowedTargets.size,
     });
   }
@@ -212,7 +297,8 @@ function createGatedFetch(gate, dispatch) {
   return function gatedFetch(input, init = {}) {
     let target;
     try {
-      target = normalizeTarget(input instanceof Request ? input.url : input);
+      const requestUrl = typeof Request !== "undefined" && input instanceof Request ? input.url : input;
+      target = normalizeTarget(requestUrl);
       gate.authorize(target);
     } catch (error) {
       return Promise.reject(error);
@@ -297,6 +383,99 @@ function patchDnsMethod(object, method, gate) {
   };
 }
 
+function findWorkspaceRoot() {
+  const entryDir = process.argv[1] ? path.dirname(path.resolve(process.argv[1])) : process.cwd();
+  const candidates = [
+    process.cwd(),
+    path.resolve(process.cwd(), "../.."),
+    entryDir,
+    path.resolve(entryDir, "../.."),
+  ];
+  return candidates.find(root =>
+    fs.existsSync(path.join(root, "index.js"))
+    && fs.existsSync(path.join(root, "artifacts/ah-sheli-bot/index.js"))
+    && fs.existsSync(path.join(root, "lib/egress/bootstrap.cjs")));
+}
+
+function isGuardedChild(command, args, options = {}) {
+  if (options.shell === true || path.resolve(String(command)) !== path.resolve(process.execPath)) return false;
+  const values = Array.isArray(args) ? args.map(String) : [];
+  const root = findWorkspaceRoot();
+  if (!root) return false;
+  const requestedCwd = options.cwd instanceof URL ? fileURLToPath(options.cwd) : options.cwd || process.cwd();
+  const cwd = path.resolve(requestedCwd);
+  const resolved = value => path.resolve(cwd, value);
+  if (values.length === 1 && resolved(values[0]) === path.join(root, "index.js")) return true;
+  const hasBootstrap = values[0] === "--require"
+    && resolved(values[1]) === path.join(root, "lib/egress/bootstrap.cjs");
+  if (hasBootstrap && values.length === 3
+    && resolved(values[2]) === path.join(root, "artifacts/ah-sheli-bot/index.js")) return true;
+  return values.length === 4
+    && values[0] === "--enable-source-maps"
+    && values[1] === "--require"
+    && resolved(values[2]) === path.join(root, "lib/egress/bootstrap.cjs")
+    && resolved(values[3]) === path.join(root, "artifacts/api-server/dist/index.mjs");
+}
+
+function patchChildProcess(gate) {
+  const originalSpawn = childProcess.spawn;
+  childProcess.spawn = function guardedSpawn(command, args, options) {
+    if (!isGuardedChild(command, args, options)) {
+      throw new EgressDeniedError("EGRESS_CHILD_PROCESS_BLOCKED");
+    }
+    gate.assertCanSpawnGuardedEntry();
+    return originalSpawn.call(this, command, args, options);
+  };
+
+  const originalSpawnSync = childProcess.spawnSync;
+  childProcess.spawnSync = function guardedSpawnSync(command, args, options) {
+    if (!isGuardedChild(command, args, options)) {
+      throw new EgressDeniedError("EGRESS_CHILD_PROCESS_BLOCKED");
+    }
+    gate.assertCanSpawnGuardedEntry();
+    return originalSpawnSync.call(this, command, args, options);
+  };
+
+  for (const method of ["exec", "execSync", "execFile", "execFileSync", "fork"]) {
+    if (typeof childProcess[method] !== "function") continue;
+    childProcess[method] = function blockedChildProcessMethod() {
+      throw new EgressDeniedError("EGRESS_CHILD_PROCESS_BLOCKED");
+    };
+  }
+}
+
+function patchWorkerThreads(gate) {
+  const OriginalWorker = workerThreads.Worker;
+  workerThreads.Worker = class GuardedWorker extends OriginalWorker {
+    constructor(filename, options = {}) {
+      gate.assertCanSpawnGuardedEntry();
+      const root = findWorkspaceRoot();
+      if (!root) throw new EgressDeniedError("EGRESS_CHILD_PROCESS_BLOCKED");
+      const bootstrap = path.join(root, "lib/egress/bootstrap.cjs");
+      const execArgv = [...(options.execArgv ?? process.execArgv)];
+      const preloaded = execArgv.some((argument, index) =>
+        argument === "--require"
+        && execArgv[index + 1]
+        && path.resolve(process.cwd(), execArgv[index + 1]) === bootstrap);
+      if (!preloaded) execArgv.push("--require", bootstrap);
+      super(filename, { ...options, execArgv });
+      gate.registerWorker(this);
+    }
+  };
+}
+
+function lockGuardedMethod(target, method) {
+  const descriptor = Object.getOwnPropertyDescriptor(target, method);
+  if (!descriptor || typeof descriptor.value !== "function") {
+    throw new EgressConfigurationError();
+  }
+  Object.defineProperty(target, method, {
+    ...descriptor,
+    writable: false,
+    configurable: false,
+  });
+}
+
 function installNetworkGuards(gate) {
   if (globalThis[HOOKS_SYMBOL]) {
     throw new Error("Egress network guards are already installed in this process.");
@@ -365,6 +544,9 @@ function installNetworkGuards(gate) {
     };
   }
 
+  patchChildProcess(gate);
+  patchWorkerThreads(gate);
+
   if (typeof globalThis.WebSocket === "function") {
     const OriginalWebSocket = globalThis.WebSocket;
     globalThis.WebSocket = class GuardedWebSocket extends OriginalWebSocket {
@@ -379,6 +561,68 @@ function installNetworkGuards(gate) {
   }
 
   syncBuiltinESMExports();
+  for (const [target, method] of [
+    [globalThis, "fetch"],
+    [globalThis, "WebSocket"],
+    [http, "request"],
+    [https, "request"],
+    [net.Socket.prototype, "connect"],
+    [tls, "connect"],
+    [http2, "connect"],
+    [dns, "lookup"],
+    [dns, "resolve"],
+    [dns, "resolve4"],
+    [dns, "resolve6"],
+    [dns, "resolveAny"],
+    [dns, "resolveCname"],
+    [dns, "resolveMx"],
+    [dns, "resolveNaptr"],
+    [dns, "resolveNs"],
+    [dns, "resolvePtr"],
+    [dns, "resolveSoa"],
+    [dns, "resolveSrv"],
+    [dns, "resolveTxt"],
+    [dns.promises, "lookup"],
+    [dns.promises, "resolve"],
+    [dns.promises, "resolve4"],
+    [dns.promises, "resolve6"],
+    [dns.promises, "resolveAny"],
+    [dns.promises, "resolveCname"],
+    [dns.promises, "resolveMx"],
+    [dns.promises, "resolveNaptr"],
+    [dns.promises, "resolveNs"],
+    [dns.promises, "resolvePtr"],
+    [dns.promises, "resolveSoa"],
+    [dns.promises, "resolveSrv"],
+    [dns.promises, "resolveTxt"],
+    [dns.Resolver?.prototype, "lookup"],
+    [dns.Resolver?.prototype, "resolve"],
+    [dns.Resolver?.prototype, "resolve4"],
+    [dns.Resolver?.prototype, "resolve6"],
+    [dns.Resolver?.prototype, "resolveAny"],
+    [dns.Resolver?.prototype, "resolveCname"],
+    [dns.Resolver?.prototype, "resolveMx"],
+    [dns.Resolver?.prototype, "resolveNaptr"],
+    [dns.Resolver?.prototype, "resolveNs"],
+    [dns.Resolver?.prototype, "resolvePtr"],
+    [dns.Resolver?.prototype, "resolveSoa"],
+    [dns.Resolver?.prototype, "resolveSrv"],
+    [dns.Resolver?.prototype, "resolveTxt"],
+    [dns, "lookupService"],
+    [dgram.Socket.prototype, "send"],
+    [childProcess, "spawn"],
+    [childProcess, "spawnSync"],
+    [childProcess, "exec"],
+    [childProcess, "execSync"],
+    [childProcess, "execFile"],
+    [childProcess, "execFileSync"],
+    [childProcess, "fork"],
+    [workerThreads, "Worker"],
+  ]) {
+    if (target && Object.getOwnPropertyDescriptor(target, method)?.value) {
+      lockGuardedMethod(target, method);
+    }
+  }
   Object.defineProperty(globalThis, HOOKS_SYMBOL, { value: true });
 }
 
@@ -411,12 +655,17 @@ function installProcessEgressGuard(env = process.env) {
   Object.defineProperty(globalThis, GATE_SYMBOL, { value: gate });
   installNetworkGuards(gate);
 
-  if (!globalThis[SIGNAL_SYMBOL]) {
+  if (workerThreads.isMainThread && !globalThis[SIGNAL_SYMBOL]) {
     process.on("SIGUSR2", () => {
       const stopped = gate.trip();
       console.error(`[egress] emergency kill-switch engaged; terminated ${stopped} outbound request(s).`);
     });
     Object.defineProperty(globalThis, SIGNAL_SYMBOL, { value: true });
+  } else if (!workerThreads.isMainThread && workerThreads.parentPort && !globalThis[WORKER_SIGNAL_SYMBOL]) {
+    workerThreads.parentPort.on("message", message => {
+      if (message?.type === "AH_SHELI_EGRESS_KILL_SWITCH") gate.trip();
+    });
+    Object.defineProperty(globalThis, WORKER_SIGNAL_SYMBOL, { value: true });
   }
 
   if (invalid) throw new EgressConfigurationError();
@@ -434,6 +683,8 @@ module.exports = {
   EgressGate,
   createEgressPolicy,
   createEgressGate: policy => new EgressGate(policy),
+  browserConnectSource: policy => `connect-src 'self'${(policy?.browserOrigins ?? []).length
+    ? ` ${(policy.browserOrigins).join(" ")}` : ""}`,
   createGatedFetch,
   installNetworkGuards,
   installProcessEgressGuard,

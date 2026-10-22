@@ -30,7 +30,7 @@ module.exports = { startSystem };
 if (require.main === module) {
   startSystem().catch(() => {
     // Import errors can contain credentials; do not print their raw contents.
-    console.error('[Ah Sheli] Startup failed. Verify Node.js >=22.18, production cutover approval, external Clerk configuration, built API and required settings. No secrets were logged.');
+    console.error('[Ah Sheli] Startup halted by egress authorization or invalid application configuration. Verify Node.js >=22.18 and required settings. No secrets were logged.');
     process.exitCode = 1;
   });
 }

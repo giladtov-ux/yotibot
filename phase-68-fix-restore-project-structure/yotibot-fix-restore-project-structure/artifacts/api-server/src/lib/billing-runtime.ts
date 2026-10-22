@@ -8,17 +8,29 @@ import { whopPaymentProof } from "./payment-policy";
 import {
   billingCheckoutEnabled, hasWhopSandboxConfiguration, whopCompanyId, whopMode, whopPlanId,
 } from "./whop-config";
+import egressGate from "../../../../lib/egress/egress-gate.cjs";
 
 let ready = false, reconciling = false;
 let init: Promise<void> | undefined;
 let webhookKey: string | undefined;
-let timer: NodeJS.Timeout | undefined;
+let timer: NodeJS.Timeout | undefined, retryTimer: NodeJS.Timeout | undefined;
+const egressStopped = () => egressGate.getProcessEgressGate()?.status().tripped === true;
+
+export function stopBillingRuntime() {
+  ready = false;
+  webhookKey = undefined;
+  if (timer) clearInterval(timer);
+  if (retryTimer) clearTimeout(retryTimer);
+  timer = undefined;
+  retryTimer = undefined;
+}
+
 export function billingStatus() {
   const mode = whopMode();
   return { ready, liveMode: mode === "live", mode, checkoutEnabled: ready && billingCheckoutEnabled() };
 }
 export async function paidPrice(tier: keyof typeof planAmounts) {
-  if (!ready) return null;
+  if (!ready || egressStopped()) return null;
   const id = whopPlanId(tier);
   const companyId = whopCompanyId();
   if (!id || !companyId) return null;
@@ -45,6 +57,7 @@ function decrypt(value: string) {
   return Buffer.concat([decipher.update(buffer.subarray(28)), decipher.final()]).toString("utf8");
 }
 export async function initializeBilling() {
+  if (egressStopped()) return;
   if (whopMode() === "sandbox" && !hasWhopSandboxConfiguration()) {
     ready = false;
     return;
@@ -104,13 +117,21 @@ export async function initializeBilling() {
       logger.warn({ code: "whop_webhook_setup_pending" }, "Whop payments use authenticated reconciliation until webhook setup succeeds");
     }
     logger.info("Whop billing initialized");
-    timer ??= setInterval(() => void reconcilePayments(), 30_000);
+    if (egressStopped()) return;
+    timer ??= setInterval(() => {
+      if (!egressStopped()) void reconcilePayments();
+    }, 30_000);
     timer.unref();
     await reconcilePayments();
   })().catch(error => {
     ready = false; init = undefined;
-    const retry = setTimeout(() => void initializeBilling().catch(() => {}), 30_000);
-    retry.unref();
+    if (!egressStopped()) {
+      retryTimer = setTimeout(() => {
+        retryTimer = undefined;
+        if (!egressStopped()) void initializeBilling().catch(() => {});
+      }, 30_000);
+      retryTimer.unref();
+    }
     throw error;
   });
   return init;
@@ -123,7 +144,7 @@ export async function processWhopWebhook(payload: Buffer, headers: Record<string
   if (event.type === "payment.succeeded") await reconcilePayments();
 }
 export async function reconcilePayments() {
-  if (!ready || reconciling) return;
+  if (!ready || reconciling || egressStopped()) return;
   reconciling = true;
   try {
     const company = whopCompanyId();

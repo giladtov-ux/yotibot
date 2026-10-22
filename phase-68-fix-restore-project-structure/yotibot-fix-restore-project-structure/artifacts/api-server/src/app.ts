@@ -12,8 +12,16 @@ import { CLERK_PROXY_PATH, clerkProxyMiddleware, getClerkProxyHost } from "./mid
 import { websiteOrigin } from "./lib/billing-config";
 import telegramRouter from "./routes/public/telegram/webhook";
 import botHealthRouter from "./routes/bot-health";
+import egressGate from "../../../lib/egress/egress-gate.cjs";
 
 const app: Express = express();
+
+const processEgressGate = egressGate.getProcessEgressGate();
+const connectSrc = egressGate.browserConnectSource(processEgressGate?.policy);
+app.use((_request, response, next) => {
+  response.setHeader("Content-Security-Policy", connectSrc);
+  next();
+});
 
 app.use(
   pinoHttp({

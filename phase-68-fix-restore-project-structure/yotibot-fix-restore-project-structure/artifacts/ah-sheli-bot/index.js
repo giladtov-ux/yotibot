@@ -1,4 +1,5 @@
 import "../../lib/egress/bootstrap.cjs";
+import egressGate from "../../lib/egress/egress-gate.cjs";
 import "./src/israel-timezone.js";
 import { createServer } from "node:http";
 import { setTimeout as sleep } from "node:timers/promises";
@@ -365,6 +366,7 @@ function stop(signal) {
 
 process.once("SIGINT", () => stop("SIGINT"));
 process.once("SIGTERM", () => stop("SIGTERM"));
+egressGate.getProcessEgressGate()?.onTrip(() => stop("EGRESS_KILL_SWITCH"));
 
 const webhookConfig = resolveWebhookConfig();
 // Check Telegram before any database initialization. Separate dev/prod

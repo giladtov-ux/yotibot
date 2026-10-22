@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import egressGate from '../lib/egress/egress-gate.cjs';
 
 export function cloudEnvironmentErrors(env) {
   const errors = [];
@@ -39,6 +40,7 @@ export function cloudEnvironmentErrors(env) {
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  await import('../lib/egress/bootstrap.cjs');
   const errors = cloudEnvironmentErrors(process.env);
   if (errors.length) {
     // Names only: never print secret values or connection strings.
@@ -46,8 +48,11 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     process.exitCode = 1;
   } else {
     const root = fileURLToPath(new URL('../', import.meta.url));
-    const child = spawn(process.execPath, ['--enable-source-maps', 'artifacts/api-server/dist/index.mjs'],
+    const bootstrap = path.join(root, 'lib/egress/bootstrap.cjs');
+    const entry = path.join(root, 'artifacts/api-server/dist/index.mjs');
+    const child = spawn(process.execPath, ['--enable-source-maps', '--require', bootstrap, entry],
       { cwd: root, env: process.env, stdio: 'inherit' });
+    egressGate.getProcessEgressGate()?.registerChild(child);
     process.once('SIGTERM', () => child.kill('SIGTERM'));
     process.once('SIGINT', () => child.kill('SIGINT'));
     child.once('error', () => { console.error('Cloud server could not start'); process.exitCode = 1; });

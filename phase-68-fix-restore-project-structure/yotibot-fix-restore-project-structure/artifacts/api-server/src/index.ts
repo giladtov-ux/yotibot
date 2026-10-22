@@ -1,4 +1,5 @@
 import "../../../lib/egress/bootstrap.cjs";
+import egressGate from "../../../lib/egress/egress-gate.cjs";
 import { spawn, type ChildProcess } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -6,7 +7,7 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { BOT_INTERNAL_PORT } from "./lib/telegram.functions";
 import { createWorkerRestartDelay } from "./lib/worker-restart";
-import { initializeBilling } from "./lib/billing-runtime";
+import { initializeBilling, stopBillingRuntime } from "./lib/billing-runtime";
 import { startSelfKeepAlive } from "./lib/self-keep-alive";
 import { isDevelopmentTelegramWebhook, shouldStartTelegramWorker } from "./lib/telegram-staging";
 
@@ -23,6 +24,7 @@ let stopSelfKeepAlive = () => {};
 
 function startTelegramWorker() {
   if (shuttingDown || botProcess || !process.env.TELEGRAM_BOT_TOKEN
+    || egressGate.getProcessEgressGate()?.status().tripped
     || !shouldStartTelegramWorker(process.env)) return;
 
   const webhookUrl = process.env.TELEGRAM_WEBHOOK_URL?.trim();
@@ -49,7 +51,8 @@ function startTelegramWorker() {
   }
 
   workerStartedAt = Date.now();
-  botProcess = spawn(process.execPath, [botEntry], {
+  const egressBootstrap = path.join(workspaceRoot, "lib", "egress", "bootstrap.cjs");
+  botProcess = spawn(process.execPath, ["--require", egressBootstrap, botEntry], {
     cwd: workspaceRoot,
     env: {
       ...process.env,
@@ -58,6 +61,7 @@ function startTelegramWorker() {
     },
     stdio: "inherit",
   });
+  egressGate.getProcessEgressGate()?.registerChild(botProcess);
 
   botProcess.once("error", (error) => {
     logger.error({ err: error }, "Telegram worker could not start.");
@@ -88,11 +92,22 @@ function scheduleTelegramWorkerRestart() {
 
 function stopTelegramWorker() {
   shuttingDown = true;
+  stopBillingRuntime();
   stopSelfKeepAlive();
   if (botRestartTimer) clearTimeout(botRestartTimer);
   botProcess?.kill("SIGTERM");
   apiServer?.close();
 }
+
+egressGate.getProcessEgressGate()?.onTrip(() => {
+  shuttingDown = true;
+  stopBillingRuntime();
+  stopSelfKeepAlive();
+  if (botRestartTimer) clearTimeout(botRestartTimer);
+  botRestartTimer = undefined;
+  botProcess?.kill("SIGTERM");
+  apiServer?.close();
+});
 
 process.once("SIGINT", stopTelegramWorker);
 process.once("SIGTERM", stopTelegramWorker);
