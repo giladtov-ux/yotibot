@@ -128,13 +128,19 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     console.error('Usage: node scripts/telegram-render-webhook.mjs [--check|--apply] [--direct]');
     process.exitCode = 1;
   } else {
-    configureRenderWebhook({ apply: args.includes('--apply'), direct: args.includes('--direct') }).then(result => {
-      console.log(JSON.stringify(result, null, 2));
-      if (result.blocked) process.exitCode = 1;
-    }).catch(() => {
-      // Network/database exceptions can contain credentials: never print them.
-      console.error('Webhook check failed. Verify Telegram credentials, database access and connectivity. No secrets were logged.');
-      process.exitCode = 1;
-    });
+    (async () => {
+      try {
+        await import('../lib/egress/bootstrap.cjs');
+        const result = await configureRenderWebhook({
+          apply: args.includes('--apply'), direct: args.includes('--direct'),
+        });
+        console.log(JSON.stringify(result, null, 2));
+        if (result.blocked) process.exitCode = 1;
+      } catch {
+        // Startup and network errors can contain credentials; never print them.
+        console.error('Webhook operation blocked or failed. Verify local egress approval and configuration. No secrets were logged.');
+        process.exitCode = 1;
+      }
+    })();
   }
 }

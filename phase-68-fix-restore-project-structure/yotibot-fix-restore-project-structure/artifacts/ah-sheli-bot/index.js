@@ -1,3 +1,4 @@
+import "../../lib/egress/bootstrap.cjs";
 import "./src/israel-timezone.js";
 import { createServer } from "node:http";
 import { setTimeout as sleep } from "node:timers/promises";

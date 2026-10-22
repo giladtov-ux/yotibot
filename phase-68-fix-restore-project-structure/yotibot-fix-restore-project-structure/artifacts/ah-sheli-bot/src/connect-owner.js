@@ -1,3 +1,4 @@
+import "../../../lib/egress/bootstrap.cjs";
 import { createOwnerConnections } from "./owner-connection.js";
 import { closeDatabase } from "./database.js";
 
