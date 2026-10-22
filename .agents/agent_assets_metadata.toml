@@ -119,3 +119,18 @@ uri = "file://phase-68-fix-restore-project-structure/yotibot-fix-restore-project
 type = "text"
 title = "Phase 109 Egress Kill-Switch Remediation"
 description = "Local code changes, automated verification, and remaining egress-control gaps; no live provider calls or deployment."
+logical_id = "04b6b050-90e9-4cec-91f4-ee40a9aa5fe7"
+
+[[outputs]]
+id = "14lwnWAUxJprEOrNczpFk"
+uri = "file://phase-68-fix-restore-project-structure/yotibot-fix-restore-project-structure/docs/phase-110-data-and-secrets-isolation.md"
+type = "text"
+title = "Phase 110 Data and Secrets Isolation"
+description = "Read-only inventory of secret names, database wiring, isolation findings, and verification gaps. No secret values or database connections were used."
+logical_id = "ff3040f2-aefa-4058-b21d-92dedcf9bbc3"
+content_hash = "sha256:d63bc935319a0801e2d3f1c92d75514a0480372b163dc9f3a228a3605c84b429"
+size = 10595
+mtime_ms = 1792657743496
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aa92bd01-385d-4484-80d2-b8a32576dccf/ff3040f2-aefa-4058-b21d-92dedcf9bbc3/566a9655-d74e-4b5c-b48c-6708047b3246"
+storage_version_token = "1792657758642461"
+content_type = "text/markdown"
