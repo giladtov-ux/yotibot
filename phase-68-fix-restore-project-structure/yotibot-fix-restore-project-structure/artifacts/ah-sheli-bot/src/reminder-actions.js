@@ -65,6 +65,7 @@ async function applyMessageUpdate(telegram, chatId, update, assertActive) {
 // or send is replayed here; attempt budgets are durable BEFORE Telegram I/O.
 export async function retryReminderMessageUpdates(store, telegram, {
   ownerChatId, isAuthorized = async () => false, assertActive = () => {},
+  isMessagingEnabled = async () => true,
   commit = commitReminderBatch, now = Date.now, limit = 16,
   only,
 } = {}) {
@@ -74,7 +75,8 @@ export async function retryReminderMessageUpdates(store, telegram, {
   for (const { reminder, key, receipt } of telegramMessageReceipts(store)) {
     if (only && (reminder.id !== only.id || reminder.chatId !== only.chatId
       || (only.key !== undefined && key !== only.key))) continue;
-    if (reminder.chatId !== ownerChatId && !await isAuthorized(reminder.chatId)) continue;
+    if (!await isMessagingEnabled(reminder.chatId)
+      || reminder.chatId !== ownerChatId && !await isAuthorized(reminder.chatId)) continue;
     for (let index = 0; index < (receipt.messageUpdates?.length ?? 0); index++) {
       const update = receipt.messageUpdates[index];
       if (attempted >= limit) return attempted;
@@ -105,7 +107,8 @@ export async function retryReminderMessageUpdates(store, telegram, {
       attempted++;
       // Recheck membership after the durable attempt, before touching the chat.
       assertActive();
-      if (reminder.chatId !== ownerChatId && !await isAuthorized(reminder.chatId)) continue;
+      if (!await isMessagingEnabled(reminder.chatId)
+        || reminder.chatId !== ownerChatId && !await isAuthorized(reminder.chatId)) continue;
       let succeeded = false;
       try {
         await applyMessageUpdate(telegram, reminder.chatId, update, assertActive);

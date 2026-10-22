@@ -5,21 +5,25 @@ import { getWhopClient } from "./whopClient";
 import { logger } from "./logger";
 import { websiteOrigin, planAmounts } from "./billing-config";
 import { whopPaymentProof } from "./payment-policy";
+import {
+  billingCheckoutEnabled, hasWhopSandboxConfiguration, whopCompanyId, whopMode, whopPlanId,
+} from "./whop-config";
 
 let ready = false, reconciling = false;
 let init: Promise<void> | undefined;
 let webhookKey: string | undefined;
 let timer: NodeJS.Timeout | undefined;
-export function billingStatus() { return { ready, liveMode: true }; }
-export function whopPlanId(tier: keyof typeof planAmounts) {
-  return tier === "Pro" ? process.env.WHOP_PRO_PLAN_ID : process.env.WHOP_UNLIMITED_PLAN_ID;
+export function billingStatus() {
+  const mode = whopMode();
+  return { ready, liveMode: mode === "live", mode, checkoutEnabled: ready && billingCheckoutEnabled() };
 }
 export async function paidPrice(tier: keyof typeof planAmounts) {
   if (!ready) return null;
   const id = whopPlanId(tier);
-  if (!id) return null;
+  const companyId = whopCompanyId();
+  if (!id || !companyId) return null;
   const plan = await (await getWhopClient()).plans.retrieve({ id });
-  if (plan.account?.id !== process.env.WHOP_COMPANY_ID || plan.currency !== "ils"
+  if (plan.account?.id !== companyId || plan.currency !== "ils"
     || plan.plan_type !== "renewal" || plan.billing_period !== 30
     || plan.initial_price !== 0 || plan.renewal_price * 100 !== planAmounts[tier]
     || plan.trial_period_days || plan.visibility === "archived") return null;
@@ -41,6 +45,10 @@ function decrypt(value: string) {
   return Buffer.concat([decipher.update(buffer.subarray(28)), decipher.final()]).toString("utf8");
 }
 export async function initializeBilling() {
+  if (whopMode() === "sandbox" && !hasWhopSandboxConfiguration()) {
+    ready = false;
+    return;
+  }
   init ??= (async () => {
     await pool.query(`CREATE TABLE IF NOT EXISTS public.ah_sheli_website_registrations(
         id uuid PRIMARY KEY, telegram_id text NOT NULL CHECK(telegram_id ~ '^[1-9][0-9]{0,19}$'),
@@ -73,23 +81,24 @@ export async function initializeBilling() {
     try {
       // A pinned public origin must not let development register a live hook
       // using credentials/state from its separate database.
-      if (process.env.NODE_ENV === "development") throw new Error("preview_webhook_registration_disabled");
+      if (process.env.NODE_ENV === "development" && whopMode() === "live")
+        throw new Error("preview_live_webhook_registration_disabled");
       const { rows } = await pool.query("SELECT secret_ciphertext FROM public.ah_sheli_whop_webhooks WHERE endpoint=$1 AND company_id=$2",
-        [endpoint, process.env.WHOP_COMPANY_ID]);
+        [endpoint, whopCompanyId()]);
       if (rows[0]) webhookKey = decrypt(rows[0].secret_ciphertext);
       else {
-        const hooks = await client.webhooks.list({ account_id: process.env.WHOP_COMPANY_ID!, first: 100 });
+        const hooks = await client.webhooks.list({ account_id: whopCompanyId()!, first: 100 });
         const existing = hooks.data.find(h => h.url === endpoint && h.enabled);
         const hook = existing
           ? await client.webhooks.retrieve({ id: existing.id })
-          : await client.webhooks.create({ url: endpoint, resource_id: process.env.WHOP_COMPANY_ID,
+          : await client.webhooks.create({ url: endpoint, resource_id: whopCompanyId(),
             events: ["payment.succeeded"], enabled: true },
             { idempotencyKey: `ah-sheli-hook-${createHash("sha256").update(endpoint).digest("hex")}` });
         if (!hook.webhook_secret) throw new Error("whop_webhook_secret_unavailable");
         webhookKey = hook.webhook_secret;
         await pool.query(`INSERT INTO public.ah_sheli_whop_webhooks(endpoint,company_id,secret_ciphertext)
           VALUES($1,$2,$3) ON CONFLICT(endpoint) DO UPDATE SET company_id=$2,secret_ciphertext=$3`,
-          [endpoint, process.env.WHOP_COMPANY_ID, encrypt(webhookKey)]);
+          [endpoint, whopCompanyId(), encrypt(webhookKey)]);
       }
     } catch {
       logger.warn({ code: "whop_webhook_setup_pending" }, "Whop payments use authenticated reconciliation until webhook setup succeeds");
@@ -117,7 +126,8 @@ export async function reconcilePayments() {
   if (!ready || reconciling) return;
   reconciling = true;
   try {
-    const company = process.env.WHOP_COMPANY_ID!;
+    const company = whopCompanyId();
+    if (!company) throw new Error("whop_company_missing");
     const { rows } = await pool.query(`SELECT * FROM public.ah_sheli_website_registrations
       WHERE verified_at IS NOT NULL AND whop_checkout_id IS NOT NULL AND
         (fulfilled_at IS NULL OR whop_membership_id IS NOT NULL)
@@ -182,6 +192,9 @@ async function sendPaymentConfirmations() {
   const { rows } = await pool.query(`UPDATE public.ah_sheli_payment_grants SET notification_status='unknown'
     WHERE invoice_id IN (SELECT invoice_id FROM public.ah_sheli_payment_grants
       WHERE invoice_id LIKE 'whop:%' AND notification_status='pending'
+        AND EXISTS (SELECT 1 FROM public.ah_sheli_telegram_users u
+          WHERE u.telegram_user_id = ah_sheli_payment_grants.telegram_id
+            AND u.messages_opted_out = false)
       ORDER BY created_at LIMIT 10 FOR UPDATE SKIP LOCKED) RETURNING *`);
   for (const receipt of rows) {
     const { rows: registrations } = await pool.query("SELECT plan_tier FROM public.ah_sheli_website_registrations WHERE id=$1", [receipt.registration_id]);

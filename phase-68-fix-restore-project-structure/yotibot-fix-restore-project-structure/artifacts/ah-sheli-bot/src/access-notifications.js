@@ -5,6 +5,7 @@ export async function sendAccessNotification({
 }) {
   try {
     assertActive();
+    if (await repository.isMessagingOptedOut(recipientId)) return "skipped";
     if (!await repository.claimNotification(eventKey, userId, recipientId)) return "skipped";
   } catch {
     console.warn("[Ah Sheli] Access notification not sent: attempt could not be recorded.");

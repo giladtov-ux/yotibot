@@ -5,6 +5,7 @@ import { RegisterWebsiteUserBody, VerifyWebsiteRegistrationBody } from "@workspa
 import { websiteOrigin, planAmounts } from "../lib/billing-config";
 import { billingStatus, paidPrice } from "../lib/billing-runtime";
 import { getWhopClient } from "../lib/whopClient";
+import { whopCompanyId } from "../lib/whop-config";
 import { whopUrl } from "../lib/payment-policy";
 import { registrationCookie, registrationSession } from "../lib/registration-cookie";
 
@@ -70,6 +71,7 @@ async function responseStatus(reg: Registration, session: string) {
     `SELECT 1 FROM public.ah_sheli_website_registrations WHERE telegram_id=$1
      AND verified_at IS NOT NULL AND whop_membership_id IS NOT NULL LIMIT 1`, [reg.telegram_id]) : { rows: [] };
   const hasCustomer = customer.length > 0;
+  const billing = billingStatus();
   return {
     state, plan_tier: state === "active" && paid.length ? paid[0].plan_tier : reg.plan_tier,
     telegram_url: reg.verified_at ? "https://t.me/AhSheli_Reminder_bot"
@@ -77,8 +79,9 @@ async function responseStatus(reg: Registration, session: string) {
         ? `https://t.me/AhSheli_Reminder_bot?start=web_${linkToken(session)}` : null,
     expires_at: reg.verified_at && expiry ? expiry.toISOString() : null,
     access_status: reg.verified_at ? (active ? "active" : member?.subscription_status ?? "pending") : null,
-    billing_available: billingStatus().ready,
-    payment_mode: billingStatus().liveMode ? "live" : "test",
+    billing_available: billing.ready,
+    payment_mode: billing.liveMode ? "live" : "test",
+    checkout_enabled: billing.checkoutEnabled,
     has_customer: hasCustomer,
     code_sent: !reg.verified_at && !!reg.code_hash && !!reg.code_expires_at
       && reg.code_expires_at.getTime() > Date.now() && reg.code_attempts < 5,
@@ -136,6 +139,12 @@ router.post("/registration/verify", async (req, res) => {
   res.json(await responseStatus(rows[0], registrationSession(req)));
 });
 router.post("/checkout", async (req, res) => {
+  const billing = billingStatus();
+  if (!billing.checkoutEnabled) {
+    throw new BillingError(503, billing.mode === "sandbox"
+      ? "סביבת בדיקת התשלום עדיין אינה מוגדרת."
+      : "פתיחת תשלומים חדשים מושבתת כרגע.");
+  }
   const reg = await requireRegistration(req);
   if (!reg.verified_at) throw new BillingError(403, "קודם פתח את הבוט מהקישור ואמת שזה הטלגרם שלך.");
   if (!(reg.plan_tier in planAmounts)) throw new BillingError(400, "Basic חינמי וממתין לאישור בבוט, בלי תשלום.");
@@ -167,7 +176,7 @@ router.post("/checkout", async (req, res) => {
     }
     if (!url) {
       const checkout = await whop.checkoutConfigurations.create({
-        account_id: process.env.WHOP_COMPANY_ID, plan_id: price,
+        account_id: whopCompanyId(), plan_id: price,
         metadata: { app: "ah_sheli", registration_id: reg.id, telegram_id: reg.telegram_id },
         redirect_url: `${websiteOrigin()}/?billing=success`,
       }, { idempotencyKey: `ah-sheli-checkout-${reg.id}` });
@@ -193,7 +202,7 @@ router.post("/billing/portal", async (req, res) => {
   if (!rows[0]) throw new BillingError(404, "עוד לא נפתח מנוי בתשלום לחשבון הזה.");
   const whop = await getWhopClient();
   const membership = await whop.memberships.retrieve({ id: rows[0].whop_membership_id });
-  if (membership.user_id !== rows[0].whop_user_id || membership.account.id !== process.env.WHOP_COMPANY_ID)
+  if (membership.user_id !== rows[0].whop_user_id || membership.account.id !== whopCompanyId())
     throw new BillingError(403, "המנוי לא תואם לחשבון המחובר.");
   // Hosted Whop billing requires the buyer's Whop login, not a customer-supplied ID.
   const manage = (membership as unknown as { manage_url?: string }).manage_url;

@@ -14,6 +14,7 @@ test("real SQL uses atomic new-user detection and durable unique attempts withou
     await client.query(`CREATE TEMP TABLE ah_sheli_telegram_users (
       telegram_user_id text PRIMARY KEY, display_name text NOT NULL, username text,
       subscription_status text NOT NULL DEFAULT 'pending', subscription_expires_at timestamptz,
+      messages_opted_out boolean NOT NULL DEFAULT false,
       created_at timestamptz DEFAULT now(), updated_at timestamptz DEFAULT now());
       CREATE TEMP TABLE ah_sheli_access_notifications (
         event_key text PRIMARY KEY, telegram_user_id text NOT NULL,

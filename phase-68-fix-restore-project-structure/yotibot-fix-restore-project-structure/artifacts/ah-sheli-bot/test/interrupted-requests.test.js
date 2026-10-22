@@ -121,7 +121,8 @@ test("claim preserves deduplication and records only bounded owner metadata with
   assert.equal(await claimUpdate(1, { chatId: owner, text: "replacement" }, db), false);
   assert.equal(db.records[0].status, "failed");
   assert.notEqual(db.records[0].request_text, "replacement");
-  for (const text of ["/connect synthetic-proof", "/connect@ExampleBot synthetic-proof", "/id"]) {
+  for (const text of ["/connect synthetic-proof", "/connect@ExampleBot synthetic-proof", "/id",
+    "/stop", "STOP", "/start web_synthetic-token"]) {
     assert.equal(requestMetadata({ message: message(text) }, owner).text, undefined);
   }
   assert.equal(requestMetadata({ message: { ...message("foreign"), chat: { id: "foreign" } } }, owner).text, undefined);

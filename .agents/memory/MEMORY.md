@@ -1,1 +1,2 @@
 - [Telegram staging isolation](telegram-staging.md) — Staging uses a dedicated test bot token stored only in Development Secrets; never reuse the Production bot token.
+- [Messaging and billing controls](messaging-and-billing-controls.md) — STOP preserves user access/data; the billing switch blocks new sales but keeps verified payment fulfillment.

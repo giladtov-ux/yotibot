@@ -7,9 +7,13 @@ export const MAX_NUDGES_PER_OCCURRENCE = 3;
 
 // Called inside the existing reminder/button queue, not a second scheduler.
 export async function sendReminderNudges(store, telegram, ownerChatId, persist,
-  assertActive, logError, now = Date.now(), { isAuthorized = async () => false } = {}) {
+  assertActive, logError, now = Date.now(), {
+    isAuthorized = async () => false, isMessagingEnabled = async () => true,
+  } = {}) {
   let sent = 0;
-  const eligible = id => ownerChatId && (id === ownerChatId || isAuthorized(id));
+  const eligible = async id => Boolean(ownerChatId)
+    && (id === ownerChatId || await isAuthorized(id))
+    && await isMessagingEnabled(id);
   for (const reminder of store.reminders) {
     if (!ownerChatId || reminder.lastAttemptAt) continue;
     for (const [key, delivery] of Object.entries(reminder.telegramDeliveries ?? {})) {

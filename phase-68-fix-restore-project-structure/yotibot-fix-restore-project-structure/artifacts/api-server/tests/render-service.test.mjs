@@ -26,6 +26,7 @@ function handler(name, ready, env = {}) {
     express: { Router: () => ({ get: (_path, cb) => { callback = cb; } }) },
     '@workspace/api-zod': { HealthCheckResponse: { parse: x => x } },
     '../lib/telegram.functions': { telegramWorkerReady: async () => ready },
+    '../lib/build-info': { buildInfo: { id: 'test-build', commit: 'test-commit', releaseTag: null, dirty: false } },
   }, env);
   return async () => {
     const res = {

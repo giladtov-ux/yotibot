@@ -7,7 +7,8 @@ import { sendReminderNudges } from "./reminder-nudges.js";
 
 export function createReminderWorker(store, telegram, allowedChatId, logError, persist = saveStore,
   assertActive = () => {}, {
-    isAuthorized = async () => false, commit = mutateReminderState,
+    isAuthorized = async () => false, isMessagingEnabled = async () => true,
+    commit = mutateReminderState,
   } = {}) {
   let inProgress = false;
   const retryNotBefore = new Map();
@@ -20,9 +21,11 @@ export function createReminderWorker(store, telegram, allowedChatId, logError, p
       const now = Date.now();
       const ownerChatId = typeof allowedChatId === "function" ? allowedChatId() : allowedChatId;
       await retryReminderMessageUpdates(store, telegram, {
-        ownerChatId, isAuthorized, assertActive, commit,
+        ownerChatId, isAuthorized, isMessagingEnabled, assertActive, commit,
       });
-      const eligible = id => ownerChatId && (id === ownerChatId || isAuthorized(id));
+      const eligible = async id => Boolean(ownerChatId)
+        && (id === ownerChatId || await isAuthorized(id))
+        && await isMessagingEnabled(id);
       for (const reminder of store.reminders) {
         if (reminder.sentAt || reminder.dueAt > now) continue;
         if ((retryNotBefore.get(reminder.id) ?? 0) > now) continue;
@@ -133,7 +136,7 @@ export function createReminderWorker(store, telegram, allowedChatId, logError, p
         }
       }
       const nudged = await sendReminderNudges(store, telegram, ownerChatId, persist, assertActive, logError,
-        undefined, { isAuthorized });
+        undefined, { isAuthorized, isMessagingEnabled });
       return { ok: true, sent, nudged };
     } finally {
       inProgress = false;

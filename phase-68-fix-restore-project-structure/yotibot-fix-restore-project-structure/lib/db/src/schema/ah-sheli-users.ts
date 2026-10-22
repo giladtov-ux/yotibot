@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { check, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, check, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
 export const ahSheliTelegramUsersTable = pgTable("ah_sheli_telegram_users", {
   telegramUserId: text("telegram_user_id").primaryKey(),
@@ -7,6 +7,7 @@ export const ahSheliTelegramUsersTable = pgTable("ah_sheli_telegram_users", {
   username: text("username"),
   subscriptionStatus: text("subscription_status").notNull().default("pending"),
   subscriptionExpiresAt: timestamp("subscription_expires_at", { withTimezone: true }),
+  messagesOptedOut: boolean("messages_opted_out").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, table => [

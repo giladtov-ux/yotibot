@@ -9,6 +9,8 @@ export function landingPageUrl() {
 }
 export function botCommandUpdates(ownerId) {
   const commands = [
+    { command: "start", description: "הפעלת הודעות הבוט" },
+    { command: "stop", description: "השתקת הודעות הבוט" },
     { command: "help", description: "איך אפשר לעזור" },
     { command: "status", description: "מצב הגישה ותוקף המנוי שלי" },
   ];
@@ -57,6 +59,12 @@ function subscriptionCard(user, ownerId, now) {
   }).format(new Date(user.expiresAt)) : null;
   return `👤 ${user.name}\nמזהה טלגרם: ${user.id}\n🔑 ${statusNames[state]}${expiry ? `\nבתוקף עד: ${expiry} (שעון ישראל)` : ""}`;
 }
+function messagingPreferenceCommand(text) {
+  const value = String(text ?? "").trim();
+  if (/^(?:stop|\/stop(?:@[a-z0-9_]+)?)$/iu.test(value)) return "stop";
+  if (/^\/start(?:@[a-z0-9_]+)?$/iu.test(value)) return "start";
+  return null;
+}
 
 export function createUserAccess({ repository, ownerId, assertActive = () => {}, now = Date.now }) {
   const identities = new Map();
@@ -80,6 +88,33 @@ export function createUserAccess({ repository, ownerId, assertActive = () => {},
   }
   async function assertPermission(id) {
     if (!await canUse(id)) throw new UserAccessError();
+  }
+  async function handleMessagingPreferenceCommand(update, telegram) {
+    const actor = privateActor(update);
+    const command = messagingPreferenceCommand(update.message?.text);
+    if (!actor || !command) return false;
+    assertActive();
+    if (command === "stop" && !await repository.messagingPreferencesReady()) {
+      await telegram.sendMessage(actor.id,
+        "לא הצלחתי לשמור את בקשת ההשתקה בגלל עדכון מערכת שעדיין לא הושלם. אל תסתמך עליה עד לקבלת אישור.");
+      return true;
+    }
+    const wasOptedOut = command === "start"
+      ? await repository.isMessagingOptedOut(actor.id) : false;
+    if (command === "start" && !wasOptedOut) return false;
+    await repository.register(actor, actor.id === owner());
+    const optedOut = command === "stop";
+    if (!await repository.setMessagingOptedOut(actor.id, optedOut)) {
+      throw new Error("messaging_preference_user_missing");
+    }
+    await telegram.sendMessage(actor.id, optedOut
+      ? "הודעות הבוט הושתקו. הגישה, המנוי והנתונים שלך נשארו ללא שינוי. שלח /start כדי להפעיל הודעות מחדש."
+      : "הודעות הבוט הופעלו מחדש. הגישה, המנוי והנתונים שלך לא שונו.");
+    return true;
+  }
+  async function isMessagingOptedOut(update) {
+    const actor = privateActor(update);
+    return actor ? repository.isMessagingOptedOut(actor.id) : false;
   }
   async function notify(telegram, user) {
     const state = effectiveSubscription(user, owner(), now());
@@ -157,6 +192,8 @@ export function createUserAccess({ repository, ownerId, assertActive = () => {},
   }
   return {
     canUse, assertPermission,
+    handleMessagingPreferenceCommand,
+    isMessagingOptedOut,
     async notifyNewRegistration(id, telegram) {
       // Used only after a verified website/email-link INSERT has committed.
       try { await notifyRegistration(await repository.get(telegramUserId(id)), telegram); }
@@ -164,7 +201,10 @@ export function createUserAccess({ repository, ownerId, assertActive = () => {},
     },
     async authorizedId(update) {
       const actor = privateActor(update);
-      return actor && await canUse(actor.id) ? actor.id : null;
+      if (!actor) return null;
+      if (messagingPreferenceCommand(update.message?.text)) return actor.id;
+      if (await repository.isMessagingOptedOut(actor.id)) return null;
+      return await canUse(actor.id) ? actor.id : null;
     },
     context(id) {
       return { isOwner: id === owner(), user: { preferredName: id === owner() ? "יוטי" : identities.get(id)?.name ?? "חבר" } };
@@ -173,6 +213,8 @@ export function createUserAccess({ repository, ownerId, assertActive = () => {},
       const actor = privateActor(update);
       if (!actor) return null;
       assertActive();
+      if (await handleMessagingPreferenceCommand(update, telegram)) return null;
+      if (await repository.isMessagingOptedOut(actor.id)) return null;
       if (!owner()) {
         await telegram.sendMessage(actor.id, "הבוט עדיין מחכה לחיבור המנהל, אחי.");
         return null;

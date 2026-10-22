@@ -28,12 +28,21 @@ function fixture() {
     async finishNotification(key, status) { notifications.set(key, status); },
     async register(actor, owner) {
       const isNew = !rows.has(actor.id);
-      const user = { status: "pending", expiresAt: null, ...rows.get(actor.id), ...actor };
+      const user = { status: "pending", expiresAt: null, messagesOptedOut: false,
+        ...rows.get(actor.id), ...actor };
       if (owner) Object.assign(user, { status: "active", expiresAt: null });
       rows.set(user.id, user);
       return { ...user, isNew };
     },
     async get(id) { return rows.has(id) ? { ...rows.get(id) } : undefined; },
+    messagingPreferencesReady() { return true; },
+    async isMessagingOptedOut(id) { return rows.get(id)?.messagesOptedOut === true; },
+    async setMessagingOptedOut(id, value) {
+      const user = rows.get(id);
+      if (!user) return false;
+      user.messagesOptedOut = value;
+      return true;
+    },
     async grant(id, days) {
       const user = rows.get(id);
       if (!user) return;
@@ -70,13 +79,53 @@ function fixture() {
 test("public menu has no manual registration or admin commands; admin menu is owner-scoped", () => {
   const [publicMenu, ownerMenu] = botCommandUpdates("1");
   assert.deepEqual(publicMenu.scope, { type: "default" });
-  assert.deepEqual(publicMenu.commands.map(command => command.command), ["help", "status"]);
+  assert.deepEqual(publicMenu.commands.map(command => command.command),
+    ["start", "stop", "help", "status"]);
   assert.deepEqual(ownerMenu.scope, { type: "chat", chat_id: "1" });
   for (const command of ["users", "grant", "revoke"]) {
     assert.ok(ownerMenu.commands.some(item => item.command === command));
   }
   assert.equal(botCommandUpdates(null).length, 1);
   assert.ok(botCommandUpdates("1").every(menu => menu.commands.every(command => command.command !== "register")));
+});
+
+test("STOP mutes all bot messages without changing access or data; /start resumes messages", async () => {
+  const f = fixture();
+  await f.dispatch(f.update(2, "/register"));
+  const granted = await f.repository.grant("2", 30);
+  const originalExpiry = granted.expiresAt;
+  const originalData = JSON.stringify(f.store);
+
+  await f.dispatch(f.update(2, "STOP"));
+  const user = f.rows.get("2");
+  assert.equal(user.messagesOptedOut, true);
+  assert.equal(user.status, "active");
+  assert.equal(user.expiresAt, originalExpiry);
+  assert.equal(JSON.stringify(f.store), originalData);
+  assert.match(f.sent.at(-1)[1], /הודעות הבוט הושתקו/u);
+  assert.equal(await f.access.authorizedId(f.update(2, "שלום")), null);
+  assert.equal(await f.access.authorizedId(f.update(2, "/start")), "2");
+
+  const afterStopConfirmation = f.sent.length;
+  await f.dispatch(f.update(2, "תזכיר לי לקנות לחם"));
+  await f.dispatch(f.update(2, "/status"));
+  assert.equal(f.sent.length, afterStopConfirmation);
+  assert.equal(await f.access.canUse("2"), true);
+
+  await f.dispatch(f.update(2, "/start"));
+  const resumedUser = f.rows.get("2");
+  assert.equal(resumedUser.messagesOptedOut, false);
+  assert.equal(resumedUser.status, "active");
+  assert.equal(resumedUser.expiresAt, originalExpiry);
+  assert.match(f.sent.at(-1)[1], /הופעלו מחדש/u);
+});
+
+test("STOP never claims success when the Staging preference schema is missing", async () => {
+  const f = fixture();
+  f.repository.messagingPreferencesReady = () => false;
+  await f.dispatch(f.update(2, "/stop"));
+  assert.equal(f.rows.has("2"), false);
+  assert.match(f.sent.at(-1)[1], /לא הצלחתי לשמור את בקשת ההשתקה/u);
 });
 
 test("registration alerts are private, once-only across repeated messages and a fresh access instance", async () => {
@@ -347,6 +396,29 @@ test("member reminders and nudges use subscription checks while owner reminders 
   assert.deepEqual(f.sent.map(([id]) => id), ["1", "2", "1", "2", "1"]);
 });
 
+test("STOP suppresses scheduled owner reminders and nudges", async () => {
+  const f = fixture();
+  const now = Date.now();
+  await f.dispatch(f.update(1, "/start"));
+  await f.repository.setMessagingOptedOut("1", true);
+  f.sent.length = 0;
+  f.store.reminders = [
+    { id: "owner-due", chatId: "1", text: "תזכורת חדשה", dueAt: now - 1 },
+    { id: "owner-nudge", chatId: "1", text: "תזכורת שנשלחה",
+      dueAt: now - 5 * 60_000, sentAt: now - 5 * 60_000,
+      telegramDeliveries: { "1": { state: "sent", messageId: 7, sentAt: now - 5 * 60_000 } } },
+  ];
+  const worker = createReminderWorker(f.store, f.telegram, "1", () => {},
+    async () => {}, () => {}, {
+      isAuthorized: id => f.access.canUse(id),
+      isMessagingEnabled: async id => !(await f.repository.isMessagingOptedOut(id)),
+    });
+  await worker();
+  assert.equal(f.sent.length, 0);
+  assert.equal(f.store.reminders[0].sentAt, undefined);
+  assert.equal(f.store.reminders[1].telegramDeliveries["1"].nagAttemptAt, undefined);
+});
+
 test("revocation while persisting an attempt prevents the Telegram send without losing the reminder", async () => {
   const f = fixture(); await f.dispatch(f.update()); await f.repository.grant("2", 1);
   f.store.reminders = [{ id: "member", chatId: "2", text: "שמורה", dueAt: Date.now() - 1 }];
@@ -399,7 +471,7 @@ test("repository queries are parameterized, preserve membership on re-registrati
   const queries = [];
   const pool = { query: async (sql, params) => {
     queries.push({ sql, params }); return { rows: [{ table_name: "ah_sheli_telegram_users",
-      notifications_table: "ah_sheli_access_notifications" }] };
+      notifications_table: "ah_sheli_access_notifications", messages_opted_out_column: true }] };
   } };
   const repository = createTelegramUserRepository(pool);
   await repository.initialize();
@@ -407,10 +479,14 @@ test("repository queries are parameterized, preserve membership on re-registrati
   await repository.grant("2", 30);
   await repository.revoke("2");
   await repository.list(2);
+  await repository.isMessagingOptedOut("2");
+  await repository.setMessagingOptedOut("2", true);
   assert.doesNotMatch(queries[0].sql, /CREATE|ALTER|DROP/u);
   assert.ok(!queries[1].sql.includes("DROP TABLE data"));
   assert.equal(queries[1].params[1], "'; DROP TABLE data; --");
   assert.match(queries[1].sql, /ELSE ah_sheli_telegram_users.subscription_status/u);
   assert.match(queries[2].sql, /GREATEST\(NOW\(\)/u);
-  assert.deepEqual(queries.at(-1).params, [20]);
+  assert.equal(queries.at(-2).params[0], "2");
+  assert.deepEqual(queries.at(-1).params, ["2", true]);
+  assert.deepEqual(queries[4].params, [20]);
 });

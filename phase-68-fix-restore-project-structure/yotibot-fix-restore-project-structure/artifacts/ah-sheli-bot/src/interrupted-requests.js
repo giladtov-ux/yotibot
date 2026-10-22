@@ -18,7 +18,8 @@ export function requestMetadata(update, ownerChatId) {
   // Never retain a one-time connection proof or text from another chat.
   const isOwnerRequest = ownerChatId && chatId === ownerChatId
     && typeof message.text === "string" && !message.from?.is_bot
-    && !/^\/(?:connect|id)(?:@[a-z0-9_]+)?(?:\s|$)/iu.test(message.text.trim());
+    && !/^(?:stop|\/(?:connect|id|start|stop)(?:@[a-z0-9_]+)?(?:\s|$))/iu
+      .test(message.text.trim());
   return { chatId, text: isOwnerRequest ? message.text : undefined };
 }
 

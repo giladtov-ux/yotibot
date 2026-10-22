@@ -3,6 +3,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build as esbuild } from "esbuild";
 import esbuildPluginPino from "esbuild-plugin-pino";
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 
@@ -10,6 +12,54 @@ import { execFileSync } from "node:child_process";
 globalThis.require = createRequire(import.meta.url);
 
 const artifactDir = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.resolve(artifactDir, "../..");
+
+function gitValue(args) {
+  try {
+    return execFileSync("git", args, { cwd: repoRoot, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+  } catch {
+    return "";
+  }
+}
+
+function dirtyFingerprint() {
+  const changed = new Set();
+  for (const args of [
+    ["diff", "HEAD", "--name-only", "-z"],
+    ["ls-files", "--others", "--exclude-standard", "-z"],
+  ]) {
+    const files = gitValue(args);
+    for (const file of files.split("\0")) if (file) changed.add(file);
+  }
+  const files = [...changed].sort();
+  if (files.length === 0) return null;
+  const hash = createHash("sha256");
+  for (const file of files) {
+    hash.update(file).update("\0");
+    try { hash.update(readFileSync(path.resolve(repoRoot, file))); }
+    catch { hash.update("<deleted-or-unreadable>"); }
+    hash.update("\0");
+  }
+  return hash.digest("hex").slice(0, 12);
+}
+
+function releaseMetadata() {
+  const commit = (process.env.RENDER_GIT_COMMIT || process.env.GIT_COMMIT_SHA
+    || gitValue(["rev-parse", "HEAD"])).trim().toLowerCase();
+  if (!/^[a-f0-9]{40}$/u.test(commit)) {
+    throw new Error("A full Git commit SHA is required to produce release metadata.");
+  }
+  const releaseTag = gitValue(["describe", "--tags", "--exact-match", commit]) || null;
+  const description = gitValue(["describe", "--tags", "--long", "--always", commit])
+    || `git-${commit.slice(0, 12)}`;
+  const fingerprint = dirtyFingerprint();
+  const dirty = fingerprint !== null;
+  const buildId = process.env.AH_SHELI_BUILD_ID?.trim()
+    || `${description}${dirty ? `-dirty-${fingerprint}` : ""}`;
+  return { buildId, commit, releaseTag, dirty };
+}
+
+const build = releaseMetadata();
 
 async function buildAll() {
   // The API starts this worker as unbundled JavaScript in production. Esbuild
@@ -55,6 +105,12 @@ async function buildAll() {
     outdir: distDir,
     outExtension: { ".js": ".mjs" },
     logLevel: "info",
+    define: {
+      "process.env.AH_SHELI_BUILD_ID": JSON.stringify(build.buildId),
+      "process.env.AH_SHELI_COMMIT_SHA": JSON.stringify(build.commit),
+      "process.env.AH_SHELI_RELEASE_TAG": JSON.stringify(build.releaseTag),
+      "process.env.AH_SHELI_BUILD_DIRTY": JSON.stringify(String(build.dirty)),
+    },
     // Some packages may not be bundleable, so we externalize them, we can add more here as needed.
     // Some of the packages below may not be imported or installed, but we're adding them in case they are in the future.
     // Examples of unbundleable packages:

@@ -14,3 +14,45 @@ mtime_ms = 1792644406678
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aa92bd01-385d-4484-80d2-b8a32576dccf/8b33c523-7fdc-466c-8837-1247df27ee8f/32d1fc9e-0cb3-42fc-bf02-900956d8a2df"
 storage_version_token = "1792644442164904"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "H7Me6lwfVRd8yZfV2sEbP"
+uri = "file://phase-68-fix-restore-project-structure/yotibot-fix-restore-project-structure/docs/phase-106-remediation-plan.md"
+type = "text"
+title = "Phase 106 Remediation Plan"
+description = "Implemented safeguards, verification results, and remaining no-cutover gates."
+logical_id = "77b4829b-75f1-48a5-aa5d-8dc025f7fd1f"
+content_hash = "sha256:011844d55569c984875f6f21a243b3cfdc40410dd22764dde873918040381202"
+size = 6113
+mtime_ms = 1792647045758
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aa92bd01-385d-4484-80d2-b8a32576dccf/77b4829b-75f1-48a5-aa5d-8dc025f7fd1f/9ed08632-71d5-4710-9c4c-5d53a44a2535"
+storage_version_token = "1792647102919478"
+content_type = "text/markdown"
+
+[[outputs]]
+id = "bWeStT6gEnIkOfag0y3KO"
+uri = "file://phase-68-fix-restore-project-structure/yotibot-fix-restore-project-structure/docs/production-db-backup-restore-verification.md"
+type = "text"
+title = "Production Database Restore Runbook"
+description = "Safe, isolated backup and restore verification steps; no Production restore was run."
+logical_id = "3fac3a22-d057-4b7f-bfab-4f292cfd0450"
+content_hash = "sha256:f63d11b80b2ab09529fb499dc814aa930c560d0d95fe44e96210827bb66aebc7"
+size = 4306
+mtime_ms = 1792645894770
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aa92bd01-385d-4484-80d2-b8a32576dccf/3fac3a22-d057-4b7f-bfab-4f292cfd0450/de027354-310e-43aa-8daf-86261323969b"
+storage_version_token = "1792647104198431"
+content_type = "text/markdown"
+
+[[outputs]]
+id = "2dfdb4eZmjXs4_LlzGfSi"
+uri = "file://phase-68-fix-restore-project-structure/yotibot-fix-restore-project-structure/docs/release-tracking.md"
+type = "text"
+title = "Release and Build Identity"
+description = "Baseline tag, build metadata fields, and release boundary."
+logical_id = "f2aec3fa-55a5-4fc7-a807-88a8de32b4a0"
+content_hash = "sha256:bba07594589560dfc8af613cfb1e12efc63e9ea3b00fbdd6c547a996630354bc"
+size = 2038
+mtime_ms = 1792646698714
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aa92bd01-385d-4484-80d2-b8a32576dccf/f2aec3fa-55a5-4fc7-a807-88a8de32b4a0/180c61b5-b48f-44cf-8a77-1da083fd0dff"
+storage_version_token = "1792647105492681"
+content_type = "text/markdown"

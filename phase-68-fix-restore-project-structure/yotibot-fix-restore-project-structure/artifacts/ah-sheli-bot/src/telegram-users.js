@@ -20,21 +20,31 @@ function fromRow(row) {
     status: row.subscription_status,
     expiresAt: row.subscription_expires_at
       ? new Date(row.subscription_expires_at).toISOString() : null,
+    messagesOptedOut: row.messages_opted_out === true,
     isNew: row.is_new === true,
   };
 }
 
 // Additive storage only: no rewrite of existing lists, reminders or state JSON.
 export function createTelegramUserRepository(pool) {
+  let messagingPreferenceAvailable = true;
   return {
     async initialize() {
       const { rows } = await pool.query(`SELECT
         to_regclass('public.ah_sheli_telegram_users') AS table_name,
-        to_regclass('public.ah_sheli_access_notifications') AS notifications_table`);
+        to_regclass('public.ah_sheli_access_notifications') AS notifications_table,
+        EXISTS (SELECT 1 FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'ah_sheli_telegram_users'
+            AND column_name = 'messages_opted_out') AS messages_opted_out_column`);
       if (!rows[0]?.table_name || !rows[0]?.notifications_table) {
         throw new Error("Telegram users schema is missing. Apply the development schema and republish.");
       }
+      messagingPreferenceAvailable = rows[0]?.messages_opted_out_column === true;
+      if (!messagingPreferenceAvailable) {
+        console.warn("[Ah Sheli] Message opt-out is unavailable until the Staging database schema is updated.");
+      }
     },
+    messagingPreferencesReady() { return messagingPreferenceAvailable; },
     async register(actor, owner = false) {
       const id = telegramUserId(actor.id);
       const { rows } = await pool.query(
@@ -75,6 +85,24 @@ export function createTelegramUserRepository(pool) {
         [telegramUserId(id)],
       );
       return fromRow(rows[0]);
+    },
+    async isMessagingOptedOut(id) {
+      if (!messagingPreferenceAvailable) return false;
+      const { rows } = await pool.query(
+        "SELECT messages_opted_out FROM ah_sheli_telegram_users WHERE telegram_user_id = $1",
+        [telegramUserId(id)],
+      );
+      return rows[0]?.messages_opted_out === true;
+    },
+    async setMessagingOptedOut(id, optedOut) {
+      if (typeof optedOut !== "boolean") throw new Error("Invalid messaging preference");
+      if (!messagingPreferenceAvailable) return false;
+      const { rowCount } = await pool.query(
+        `UPDATE ah_sheli_telegram_users SET messages_opted_out = $2, updated_at = NOW()
+         WHERE telegram_user_id = $1`,
+        [telegramUserId(id), optedOut],
+      );
+      return rowCount === 1;
     },
     async grant(id, days) {
       if (!Number.isInteger(days) || days < 1 || days > 3650) throw new Error("Invalid subscription duration");

@@ -76,7 +76,10 @@ const ownerConnections = createOwnerConnections();
 const reminderOperation = createReminderOperationQueue();
 const deliverDueReminders = createReminderWorker(
   store, telegram, () => allowedChatId, logError, saveStore, assertActive,
-  { isAuthorized: id => userAccess.canUse(id) },
+  {
+    isAuthorized: id => userAccess.canUse(id),
+    isMessagingEnabled: async id => !(await users.isMessagingOptedOut(id)),
+  },
 );
 function runReminders() {
   if (reminderRun) return reminderRun;
@@ -267,6 +270,8 @@ async function processUpdate(update) {
 
 async function handleUpdate(update) {
   const registrationNotifications = { onRegistered: id => userAccess.notifyNewRegistration(id, telegram) };
+  if (await userAccess.handleMessagingPreferenceCommand(update, telegram)) return;
+  if (await userAccess.isMessagingOptedOut(update)) return;
   if (await handleEmailAccountLink(update, telegram, getPool(), registrationNotifications)) return;
   if (update.callback_query) {
     return handleAuthorizedUpdate(store, telegram, update, { userAccess, reminderOperation, assertActive });
@@ -437,7 +442,7 @@ if (!webhookConfig) pollingRun = pollUpdates();
 void (async () => {
   const uncertain = store.reminders.filter(reminder =>
     reminder.chatId === allowedChatId && !reminder.sentAt && reminder.lastAttemptAt);
-  if (uncertain.length && !stopping) {
+  if (uncertain.length && !stopping && !await users.isMessagingOptedOut(allowedChatId)) {
     console.warn(`[Ah Sheli] ${uncertain.length} reminder deliveries need owner verification; automatic replay blocked.`);
     try {
       await telegram.sendMessage(allowedChatId,
