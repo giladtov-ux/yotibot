@@ -218,3 +218,17 @@ mtime_ms = 1792663884747
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aa92bd01-385d-4484-80d2-b8a32576dccf/060046d0-a001-4c41-a1e7-b4cd78a1bfdb/c1e731ac-982e-4a4c-abc1-b5cc2831a7bc"
 storage_version_token = "1792663920295267"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "5B81TsApLwTvMBhqDwBN9"
+uri = "file://docs/phase-117-render-staging-plan.md"
+type = "text"
+title = "Phase 117 — Render Staging Infrastructure Plan"
+description = "Read-only infrastructure plan with verified configuration, environment variable names, fail-closed controls, health and billing blockers, rollback steps, and GO/NO-GO criteria."
+logical_id = "12f6d442-3b07-4f25-9530-8b81e1d65c0b"
+content_hash = "sha256:efeb47bb93b8effbb50095a3b4f40834dff5aef2f4ba3576938ac47a064cdcde"
+size = 13454
+mtime_ms = 1792684347696
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aa92bd01-385d-4484-80d2-b8a32576dccf/12f6d442-3b07-4f25-9530-8b81e1d65c0b/61ce5a6f-e43a-4ceb-92eb-a64344a6154c"
+storage_version_token = "1792684568262422"
+content_type = "text/markdown"
