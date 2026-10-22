@@ -131,6 +131,15 @@ test("claim preserves deduplication and records only bounded owner metadata with
   assert.deepEqual(requestMetadata({}, owner), {});
 });
 
+test("concurrent duplicate update IDs claim exactly once", async () => {
+  const db = fakeDatabase();
+  const results = await Promise.all(Array.from({ length: 32 }, () =>
+    claimUpdate(44, { chatId: owner, text: "synthetic concurrent update" }, db)));
+  assert.equal(results.filter(Boolean).length, 1);
+  assert.equal(db.records.filter(record => record.update_id === 44).length, 1);
+  assert.ok(db.queries.every(({ sql }) => /ON CONFLICT \(update_id\) DO NOTHING/u.test(sql)));
+});
+
 test("only owner can read: disconnected, foreign, and bot senders cannot query or receive report", async () => {
   const db = fakeDatabase([row(1)]);
   const h = harness(db);

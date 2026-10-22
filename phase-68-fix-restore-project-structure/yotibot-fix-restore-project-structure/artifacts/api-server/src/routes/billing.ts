@@ -5,6 +5,7 @@ import { RegisterWebsiteUserBody, VerifyWebsiteRegistrationBody } from "@workspa
 import { websiteOrigin, planAmounts } from "../lib/billing-config";
 import { billingStatus, paidPrice } from "../lib/billing-runtime";
 import { getWhopClient } from "../lib/whopClient";
+import { createWhopCheckout } from "../lib/whop-checkout";
 import { whopCompanyId } from "../lib/whop-config";
 import { whopUrl } from "../lib/payment-policy";
 import { registrationCookie, registrationSession } from "../lib/registration-cookie";
@@ -175,12 +176,13 @@ router.post("/checkout", async (req, res) => {
       break;
     }
     if (!url) {
-      const checkout = await whop.checkoutConfigurations.create({
-        account_id: whopCompanyId(), plan_id: price,
-        metadata: { app: "ah_sheli", registration_id: reg.id, telegram_id: reg.telegram_id },
-        redirect_url: `${websiteOrigin()}/?billing=success`,
-      }, { idempotencyKey: `ah-sheli-checkout-${reg.id}` });
-      url = whopUrl(checkout.purchase_url);
+      const checkout = await createWhopCheckout(whop, {
+        companyId: whopCompanyId()!,
+        planId: price,
+        registration: reg,
+        redirectUrl: `${websiteOrigin()}/?billing=success`,
+      });
+      url = checkout.url;
       await client.query(
         `UPDATE public.ah_sheli_website_registrations SET whop_checkout_id=$2,
           whop_plan_id=$3,expected_amount=$4 WHERE id=$1`,

@@ -1,38 +1,44 @@
 import { WhopClient } from "@whop/sdk";
-import { whopApiBaseUrl, whopCompanyId, whopMode, whopSandboxClientOptions } from "./whop-config";
+import { whopApiBaseUrl, whopCompanyId, whopMode, whopSandboxClientOptions } from "./whop-config.ts";
 
 // Server only. Explicit credentials take precedence; never mix provider accounts.
-export async function getWhopClient() {
-  const mode = whopMode();
+type WhopClientFactory = (options: ConstructorParameters<typeof WhopClient>[0]) => WhopClient;
+
+export async function getWhopClient(
+  env: NodeJS.ProcessEnv = process.env,
+  createClient: WhopClientFactory = options => new WhopClient(options),
+  connectorFetch: typeof fetch = fetch,
+) {
+  const mode = whopMode(env);
   if (mode === "sandbox") {
     // Never fall back to the live Replit connector or WHOP_API_KEY in sandbox.
-    return new WhopClient({
-      ...whopSandboxClientOptions(),
+    return createClient({
+      ...whopSandboxClientOptions(env),
       apiVersionDate: "2026-09-29",
       timeoutInSeconds: 15,
       maxRetries: 1,
     });
   }
-  let token = process.env.WHOP_API_KEY;
+  let token = env.WHOP_API_KEY;
   if (!token) {
-    const host = process.env.REPLIT_CONNECTORS_HOSTNAME;
-    const identity = process.env.REPL_IDENTITY ? `repl ${process.env.REPL_IDENTITY}`
-      : process.env.WEB_REPL_RENEWAL ? `depl ${process.env.WEB_REPL_RENEWAL}` : null;
+    const host = env.REPLIT_CONNECTORS_HOSTNAME;
+    const identity = env.REPL_IDENTITY ? `repl ${env.REPL_IDENTITY}`
+      : env.WEB_REPL_RENEWAL ? `depl ${env.WEB_REPL_RENEWAL}` : null;
     if (!host || !identity) throw new Error("whop_connection_unavailable");
-    const response = await fetch(`https://${host}/api/v2/connection?include_secrets=true&connector_names=whop`, {
+    const response = await connectorFetch(`https://${host}/api/v2/connection?include_secrets=true&connector_names=whop`, {
       headers: { Accept: "application/json", X_REPLIT_TOKEN: identity },
       signal: AbortSignal.timeout(10_000),
     });
     if (!response.ok) throw new Error("whop_connection_unavailable");
     const data = await response.json() as { items?: { settings?: { api_key?: string; company_id?: string } }[] };
     const settings = data.items?.[0]?.settings;
-    if (settings?.company_id !== whopCompanyId()) throw new Error("whop_account_mismatch");
+    if (settings?.company_id !== whopCompanyId(env)) throw new Error("whop_account_mismatch");
     token = settings?.api_key;
   }
   if (!token) throw new Error("whop_credentials_unavailable");
-  return new WhopClient({
+  return createClient({
     token,
-    baseUrl: whopApiBaseUrl(),
+    baseUrl: whopApiBaseUrl(env),
     apiVersionDate: "2026-09-29",
     timeoutInSeconds: 15,
     maxRetries: 1,
