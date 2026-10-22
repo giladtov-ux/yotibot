@@ -98,3 +98,17 @@ mtime_ms = 1792653396273
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aa92bd01-385d-4484-80d2-b8a32576dccf/f59fd4ed-3a7b-4f4a-9350-549d33dc281b/dd455c1a-9592-403e-bf5d-105a3d3ebc5c"
 storage_version_token = "1792653482221017"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "Cm496IeqqEhsCHMuQGvqa"
+uri = "file://phase-68-fix-restore-project-structure/yotibot-fix-restore-project-structure/docs/phase-107-production-cutover-plan.md"
+type = "text"
+title = "Phase 107 Production Cutover Plan"
+description = "NO-GO preparation plan with verified baseline provenance, environment-name inventory, database isolation requirements, approval gates, acceptance tests, stop-loss thresholds, and rollback runbook."
+logical_id = "78667707-4855-43f2-8de8-c6ff8d5c497a"
+content_hash = "sha256:19b7979f051b9fe94b1336749c66130a53009db12c78a8b0f06b51108f2fa3d6"
+size = 22686
+mtime_ms = 1792654321480
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aa92bd01-385d-4484-80d2-b8a32576dccf/78667707-4855-43f2-8de8-c6ff8d5c497a/6a32ce53-8241-448d-9f38-74f8b2f362bc"
+storage_version_token = "1792654337027804"
+content_type = "text/markdown"
