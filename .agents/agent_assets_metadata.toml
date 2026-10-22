@@ -176,3 +176,17 @@ mtime_ms = 1792660221644
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aa92bd01-385d-4484-80d2-b8a32576dccf/10bac519-ab01-4895-a021-ee06d2c49567/547e57a7-c048-4649-8110-60ef967cf2b2"
 storage_version_token = "1792660250869406"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "iLq7UsQas2TUIWKVVmf15"
+uri = "file://phase-68-fix-restore-project-structure/yotibot-fix-restore-project-structure/docs/phase-113-lab-db-setup-report.md"
+type = "text"
+title = "Phase 113 Lab Database Setup Report"
+description = "Offline guard and in-memory harness verification, results, and remaining database-isolation gaps."
+logical_id = "322611c8-2045-4caa-b70c-fd6c30739909"
+content_hash = "sha256:ee4420c5c826517729dbe001107e0c8b5323b785607440dc05b1d1ac428d1240"
+size = 5566
+mtime_ms = 1792661145283
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aa92bd01-385d-4484-80d2-b8a32576dccf/322611c8-2045-4caa-b70c-fd6c30739909/0e37f9c8-488d-4db2-8fb3-cf4092084a8c"
+storage_version_token = "1792661188819972"
+content_type = "text/markdown"

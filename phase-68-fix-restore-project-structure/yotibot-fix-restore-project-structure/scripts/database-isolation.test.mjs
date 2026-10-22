@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import {
   createGuardedPool,
   createLabTestEnvironment,
@@ -40,7 +41,23 @@ test("standard test runner halts on known Production targets and refuses databas
     /known Production or live identifier/u,
   );
   assert.throws(
+    () => createLabTestEnvironment({ DATABASE_URL: "postgresql://helium/ah_sheli_lab" }),
+    /known Production or live identifier/u,
+  );
+  assert.throws(
+    () => createLabTestEnvironment({ DATABASE_URL: "postgresql://127.0.0.1/heliumdb" }),
+    /known Production or live identifier/u,
+  );
+  assert.throws(
     () => createLabTestEnvironment({ DATABASE_URL: "postgresql://prod-db.example/ah_sheli_lab" }),
+    /known Production or live identifier/u,
+  );
+  assert.throws(
+    () => createLabTestEnvironment({ PGHOST: "helium" }),
+    /known Production or live identifier/u,
+  );
+  assert.throws(
+    () => createLabTestEnvironment({ PGDATABASE: "heliumdb" }),
     /known Production or live identifier/u,
   );
   assert.throws(
@@ -51,6 +68,90 @@ test("standard test runner halts on known Production targets and refuses databas
     () => createLabTestEnvironment({ LAB_SQL_TESTS_ENABLED: "1" }),
     /does not permit database-backed tests/u,
   );
+});
+
+test("test launcher exits before spawning Node tests for helium/heliumdb", () => {
+  const runnerPath = fileURLToPath(new URL("./run-lab-tests.mjs", import.meta.url));
+  for (const databaseUrl of [
+    "postgresql://helium/ah_sheli_lab",
+    "postgresql://127.0.0.1/heliumdb",
+  ]) {
+    const result = spawnSync(process.execPath, [
+      runnerPath,
+      "--test",
+      "scripts/lab-memory-database.test.mjs",
+    ], {
+      env: {
+        PATH: process.env.PATH ?? "",
+        HOME: process.env.HOME ?? "",
+        NODE_ENV: "production",
+        DATA_ENVIRONMENT: "production",
+        DATABASE_URL: databaseUrl,
+      },
+      encoding: "utf8",
+    });
+
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /known Production or live identifier/u);
+    assert.doesNotMatch(result.stderr, /postgresql:|heliumdb/u);
+  }
+});
+
+test("concurrent test launcher processes all fail closed for Production targets", async () => {
+  const runnerPath = fileURLToPath(new URL("./run-lab-tests.mjs", import.meta.url));
+  const launch = () => new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [
+      runnerPath,
+      "--test",
+      "scripts/lab-memory-database.test.mjs",
+    ], {
+      env: {
+        PATH: process.env.PATH ?? "",
+        HOME: process.env.HOME ?? "",
+        NODE_ENV: "production",
+        DATA_ENVIRONMENT: "production",
+        DATABASE_URL: "postgresql://helium/heliumdb",
+      },
+      stdio: ["ignore", "ignore", "pipe"],
+    });
+    let stderr = "";
+    child.stderr.setEncoding("utf8");
+    child.stderr.on("data", chunk => { stderr += chunk; });
+    child.once("error", reject);
+    child.once("close", (status, signal) => resolve({ status, signal, stderr }));
+  });
+
+  const results = await Promise.all([launch(), launch(), launch()]);
+  for (const result of results) {
+    assert.equal(result.status, 2);
+    assert.equal(result.signal, null);
+    assert.match(result.stderr, /known Production or live identifier/u);
+    assert.doesNotMatch(result.stderr, /postgresql:|heliumdb/u);
+  }
+});
+
+test("a fresh process still rejects Lab SQL opt-in after restart", () => {
+  const runnerPath = fileURLToPath(new URL("./run-lab-tests.mjs", import.meta.url));
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const result = spawnSync(process.execPath, [
+      runnerPath,
+      "--test",
+      "scripts/lab-memory-database.test.mjs",
+    ], {
+      env: {
+        PATH: process.env.PATH ?? "",
+        HOME: process.env.HOME ?? "",
+        NODE_ENV: "test",
+        DATA_ENVIRONMENT: "lab",
+        LAB_SQL_TESTS_ENABLED: "1",
+        LAB_DATABASE_URL: localLabUrl,
+        DATABASE_URL: localLabUrl,
+      },
+      encoding: "utf8",
+    });
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /mock-only/u);
+  }
 });
 
 test("test launcher rejects remote Lab database targets before spawning tests", () => {
@@ -78,6 +179,10 @@ test("only explicit, local, Lab-named SQL opt-in is accepted by the database gua
   );
   assert.throws(
     () => databaseUrlForProcess({ ...env, DATABASE_URL: "postgresql://localhost/ah_sheli_live" }),
+    /known Production or live identifier/u,
+  );
+  assert.throws(
+    () => databaseUrlForProcess({ ...env, PGHOST: "helium" }),
     /known Production or live identifier/u,
   );
 });

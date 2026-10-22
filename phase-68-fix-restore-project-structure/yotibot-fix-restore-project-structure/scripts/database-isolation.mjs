@@ -6,6 +6,30 @@ function blocked(reason) {
   return new Error(`Database connection blocked: ${reason}`);
 }
 
+function assertNotKnownProductionIdentifier(value) {
+  const identifier = value.trim().toLowerCase();
+  if (DENIED_LIVE_IDENTIFIERS.has(identifier) || LIVE_IDENTIFIER_PATTERN.test(identifier)) {
+    throw blocked("the target matches a known Production or live identifier.");
+  }
+}
+
+function assertNoKnownProductionEnvironmentIdentifiers(env) {
+  for (const key of [
+    "PGHOST",
+    "PGDATABASE",
+    "PGSERVICE",
+    "DB_HOST",
+    "DB_NAME",
+    "DATABASE_HOST",
+    "DATABASE_NAME",
+  ]) {
+    const value = env[key];
+    if (typeof value === "string" && value.trim()) {
+      assertNotKnownProductionIdentifier(value);
+    }
+  }
+}
+
 function parseDatabaseTarget(value) {
   let parsed;
   try {
@@ -33,15 +57,12 @@ function parseDatabaseTarget(value) {
 
 export function assertNotKnownProductionTarget(value) {
   const { host, databaseName } = parseDatabaseTarget(value);
-  const identifiers = [host, databaseName];
-  if (identifiers.some(identifier =>
-    DENIED_LIVE_IDENTIFIERS.has(identifier) || LIVE_IDENTIFIER_PATTERN.test(identifier))) {
-    throw blocked("the target matches a known Production or live identifier.");
-  }
+  assertNotKnownProductionIdentifier(host);
+  assertNotKnownProductionIdentifier(databaseName);
 }
 
 export function validateLocalLabDatabaseUrl(value) {
-  const { parsed, host, databaseName } = parseDatabaseTarget(value);
+  const { parsed, databaseName } = parseDatabaseTarget(value);
   assertNotKnownProductionTarget(value);
   if (!LOCAL_DATABASE_HOSTS.has(parsed.hostname.toLowerCase())) {
     throw blocked("Lab database access is restricted to a local host.");
@@ -54,6 +75,7 @@ export function validateLocalLabDatabaseUrl(value) {
 }
 
 export function databaseUrlForProcess(env = process.env) {
+  assertNoKnownProductionEnvironmentIdentifiers(env);
   const isTestProcess = env.NODE_ENV === "test" || Boolean(env.NODE_TEST_CONTEXT);
   if (isTestProcess) {
     if (env.DATA_ENVIRONMENT !== "lab") {
@@ -126,6 +148,7 @@ const SAFE_TEST_ENV_KEYS = [
 ];
 
 export function createLabTestEnvironment(sourceEnv = process.env) {
+  assertNoKnownProductionEnvironmentIdentifiers(sourceEnv);
   if (sourceEnv.DATABASE_URL) {
     assertNotKnownProductionTarget(sourceEnv.DATABASE_URL);
   }
