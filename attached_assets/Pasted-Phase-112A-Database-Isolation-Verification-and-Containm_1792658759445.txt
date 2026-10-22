@@ -1,0 +1,33 @@
+Phase 112A: Database Isolation Verification and Containment
+
+Objective: Identify the source of the database connection triggered during the previous test run, halt unverified access, and prove strict isolation between Lab, Staging, and Production environments without modifying or writing data.
+
+Requirements:
+Stage A — Halt and Evidence Preservation
+1. Do NOT rerun full bot tests, database migrations, writes, or background tasks.
+2. Do NOT alter, delete, or attempt to "fix" data via database writes.
+3. Preserve existing logs and connection timestamps while redacting any secrets or PII.
+4. Document which tests were executed, what processes spawned, and whether any evidence of write operations exists.
+
+Stage B — Read-Only Connection Identification
+1. Locate all database configuration sources: environment variables, config files, secret references, fallbacks, and startup code.
+2. NEVER expose secret values, full connection strings, passwords, or tokens. Display only variable names, their sources, and environment classifications if verified safely.
+3. Inspect available logs and metadata to identify the database server, database name, and environment targeted by the process, strictly via read-only inspection.
+4. If the exact target identity cannot be conclusively determined, explicitly flag it as UNKNOWN and halt. Do not infer database identity solely from variable names.
+
+Stage C — Lab-Only Isolation Enforcement
+1. Design explicit isolation between Lab, Staging, and Production.
+2. Ensure lab tests cannot access Production environment variables or secrets.
+3. Require explicit testing-environment configuration; if missing or mismatched, processes must fail safe before attempting any database connection.
+4. Default test database configurations to a local temporary or dedicated test instance with zero access to Production data.
+5. Add automated checks verifying that startup safely fails when data-environment identity is unverified.
+
+Constraints:
+- No proactive connection to live Production databases.
+- No modifications to Secrets, Render settings, or live databases.
+- No migrations, writes, deletions, or full test suites against unverified targets.
+- Do not claim isolation is proven without infrastructure evidence.
+
+Deliverable: Produce docs/phase-112a-database-isolation-report.md detailing verified findings, gaps, executed actions, write evidence status, and a GO/NO-GO decision for further testing.
+
+Upon completion, stop and wait for human review. Do NOT initiate deployment, and do NOT modify CLOUD_CUTOVER_APPROVED.
