@@ -1,11 +1,12 @@
 import pg from "pg";
 import { createWorkerLock, LOCK_QUERY_TIMEOUT_MS } from "./worker-lock.js";
+import { databaseUrlForProcess } from "../../../scripts/database-isolation.mjs";
 
 let pool;
 export function getPool() {
-  if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is required.");
+  const connectionString = databaseUrlForProcess(process.env);
   pool ??= new pg.Pool({
-    connectionString: process.env.DATABASE_URL,
+    connectionString,
     max: 5,
     connectionTimeoutMillis: 10_000,
     statement_timeout: 15_000,
@@ -30,9 +31,9 @@ export async function closeDatabase() {
 // A session lock prevents two processes against this database from running
 // polling, reminder delivery, or snapshot writes at the same time.
 export async function acquireWorkerLock(onLost) {
-  if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is required.");
+  const connectionString = databaseUrlForProcess(process.env);
   const client = new pg.Client({
-    connectionString: process.env.DATABASE_URL,
+    connectionString,
     connectionTimeoutMillis: LOCK_QUERY_TIMEOUT_MS,
     statement_timeout: LOCK_QUERY_TIMEOUT_MS,
     query_timeout: LOCK_QUERY_TIMEOUT_MS,

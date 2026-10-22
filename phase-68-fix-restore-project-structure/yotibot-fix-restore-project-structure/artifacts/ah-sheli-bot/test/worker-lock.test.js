@@ -4,6 +4,7 @@ import { EventEmitter } from "node:events";
 import pg from "pg";
 import { createWorkerLock, WORKER_LOCK_KEY } from "../src/worker-lock.js";
 import { getPool, closeDatabase } from "../src/database.js";
+import { databaseUrlForProcess } from "../../../scripts/database-isolation.mjs";
 
 class FakeClient extends EventEmitter {
   connected = false;
@@ -113,7 +114,7 @@ test("PostgreSQL preserves exclusivity and permits recovery after connection los
   skip: process.env.AH_SHELI_DB_LOCK_TEST !== "1",
 }, async () => {
   const options = {
-    connectionString: process.env.DATABASE_URL,
+    connectionString: databaseUrlForProcess(process.env),
     connectionTimeoutMillis: 5000,
     statement_timeout: 5000,
     application_name: "ah-sheli-lock-regression",

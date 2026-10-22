@@ -148,3 +148,17 @@ mtime_ms = 1792658250051
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aa92bd01-385d-4484-80d2-b8a32576dccf/6dafde95-1535-4645-bac7-f3da7ed9aeb4/a693b093-dd6e-440a-a13f-35bc961ee81b"
 storage_version_token = "1792658269464866"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "OqR8t7MHSkj-M7mhHrsfW"
+uri = "file://phase-68-fix-restore-project-structure/yotibot-fix-restore-project-structure/docs/phase-112a-database-isolation-report.md"
+type = "text"
+title = "Phase 112A Database Isolation and Containment Report"
+description = "Read-only target findings, confirmed temporary test writes, fail-closed local isolation changes, offline-only verification, and the NO-GO owner-review decision."
+logical_id = "27358c5a-1020-4165-86d1-627e1e10f691"
+content_hash = "sha256:9f206791317ebd2adbe317cf3e48be5c66d70f31a3993c826d3a947f545fcc12"
+size = 11057
+mtime_ms = 1792659827835
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aa92bd01-385d-4484-80d2-b8a32576dccf/27358c5a-1020-4165-86d1-627e1e10f691/707a23b6-2647-4afb-958a-78949723e2b8"
+storage_version_token = "1792659900934596"
+content_type = "text/markdown"

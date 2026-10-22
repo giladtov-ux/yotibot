@@ -1,17 +1,11 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import * as schema from "./schema";
+import { createGuardedPool } from "../../../scripts/database-isolation.mjs";
 
 const { Pool } = pg;
 
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
-  );
-}
-
-export const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+export const pool = createGuardedPool(process.env, options => new Pool(options), {
   max: 10,
   connectionTimeoutMillis: 10_000,
   statement_timeout: 15_000,
