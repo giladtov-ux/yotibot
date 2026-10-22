@@ -1,2 +1,3 @@
 - [Telegram staging isolation](telegram-staging.md) — Staging uses a dedicated test bot token stored only in Development Secrets; never reuse the Production bot token.
 - [Messaging and billing controls](messaging-and-billing-controls.md) — STOP preserves user access/data; the billing switch blocks new sales but keeps verified payment fulfillment.
+- [Stale workflow processes](stale-workflow-processes.md) — A failed API workflow restart can leave its prior process bound to port 5000; inspect the listener before retrying.
