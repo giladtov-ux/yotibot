@@ -20,13 +20,13 @@ id = "H7Me6lwfVRd8yZfV2sEbP"
 uri = "file://phase-68-fix-restore-project-structure/yotibot-fix-restore-project-structure/docs/phase-106-remediation-plan.md"
 type = "text"
 title = "Phase 106 Remediation Plan"
-description = "Implemented safeguards, verification results, and remaining no-cutover gates."
+description = "Updated remediation status and remaining pre-cutover tasks."
 logical_id = "77b4829b-75f1-48a5-aa5d-8dc025f7fd1f"
-content_hash = "sha256:011844d55569c984875f6f21a243b3cfdc40410dd22764dde873918040381202"
-size = 6113
-mtime_ms = 1792647045758
-storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aa92bd01-385d-4484-80d2-b8a32576dccf/77b4829b-75f1-48a5-aa5d-8dc025f7fd1f/9ed08632-71d5-4710-9c4c-5d53a44a2535"
-storage_version_token = "1792647102919478"
+content_hash = "sha256:4e5b2e6ee0545807a7ae1fc21be31e0fcb0d43458b1c2e02d3c19ae25956e071"
+size = 6572
+mtime_ms = 1792650111857
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aa92bd01-385d-4484-80d2-b8a32576dccf/77b4829b-75f1-48a5-aa5d-8dc025f7fd1f/80d5f31e-153e-4f96-a710-0b000a1789b6"
+storage_version_token = "1792650191578493"
 content_type = "text/markdown"
 
 [[outputs]]
@@ -34,13 +34,13 @@ id = "bWeStT6gEnIkOfag0y3KO"
 uri = "file://phase-68-fix-restore-project-structure/yotibot-fix-restore-project-structure/docs/production-db-backup-restore-verification.md"
 type = "text"
 title = "Production Database Restore Runbook"
-description = "Safe, isolated backup and restore verification steps; no Production restore was run."
+description = "Runbook updated with the isolated local PostgreSQL simulation; actual Production restore remains pending."
 logical_id = "3fac3a22-d057-4b7f-bfab-4f292cfd0450"
-content_hash = "sha256:f63d11b80b2ab09529fb499dc814aa930c560d0d95fe44e96210827bb66aebc7"
-size = 4306
-mtime_ms = 1792645894770
-storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aa92bd01-385d-4484-80d2-b8a32576dccf/3fac3a22-d057-4b7f-bfab-4f292cfd0450/de027354-310e-43aa-8daf-86261323969b"
-storage_version_token = "1792647104198431"
+content_hash = "sha256:a58d8c5db8007aa9d6cb84223a5030d279288cafb56d91166ade9a029c001698"
+size = 5191
+mtime_ms = 1792650115585
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aa92bd01-385d-4484-80d2-b8a32576dccf/3fac3a22-d057-4b7f-bfab-4f292cfd0450/451495ec-3c78-402b-9c51-574ffd982777"
+storage_version_token = "1792650190124912"
 content_type = "text/markdown"
 
 [[outputs]]
@@ -55,4 +55,18 @@ size = 2038
 mtime_ms = 1792646698714
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aa92bd01-385d-4484-80d2-b8a32576dccf/f2aec3fa-55a5-4fc7-a807-88a8de32b4a0/180c61b5-b48f-44cf-8a77-1da083fd0dff"
 storage_version_token = "1792647105492681"
+content_type = "text/markdown"
+
+[[outputs]]
+id = "dAUZ9P28o4kyirmmgJx98"
+uri = "file://phase-68-fix-restore-project-structure/yotibot-fix-restore-project-structure/docs/phase-106-final-readiness-report.md"
+type = "text"
+title = "Phase 106 Final Readiness Status"
+description = "Final findings, evidence, remaining gates, and NO-GO cutover decision."
+logical_id = "2f81ee39-0858-4105-8a7a-ad7c6504351d"
+content_hash = "sha256:c3dfa7f7a7d2862f8b6c1d20f0d5e5a0749379e464565d870c445ec7f98cef4a"
+size = 4093
+mtime_ms = 1792650127489
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aa92bd01-385d-4484-80d2-b8a32576dccf/2f81ee39-0858-4105-8a7a-ad7c6504351d/a4717324-5053-456a-b8d7-d1b31d58585b"
+storage_version_token = "1792650188878961"
 content_type = "text/markdown"
