@@ -70,3 +70,17 @@ mtime_ms = 1792650127489
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aa92bd01-385d-4484-80d2-b8a32576dccf/2f81ee39-0858-4105-8a7a-ad7c6504351d/a4717324-5053-456a-b8d7-d1b31d58585b"
 storage_version_token = "1792650188878961"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "MlZOsx7IjdDEEdm5I6hLf"
+uri = "file://phase-68-fix-restore-project-structure/yotibot-fix-restore-project-structure/docs/phase-107-cutover-plan.md"
+type = "text"
+title = "Phase 107 — Production Cutover Plan"
+description = "Planning-only checklist with human approval gates, Production credential inventory, stop-loss criteria, and rollback steps."
+logical_id = "e89b0580-2cb5-44c9-ab27-7583ca8ea842"
+content_hash = "sha256:69a40c286b75289b74d3fd04c897362e4cb2b09c7c1e592ac8b778c9e5cd901a"
+size = 20965
+mtime_ms = 1792650814257
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aa92bd01-385d-4484-80d2-b8a32576dccf/e89b0580-2cb5-44c9-ab27-7583ca8ea842/927c0996-544c-481e-9f8c-bb610e09c6f6"
+storage_version_token = "1792650838596429"
+content_type = "text/markdown"
