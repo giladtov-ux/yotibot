@@ -1,6 +1,9 @@
 const LOCAL_DATABASE_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
 const DENIED_LIVE_IDENTIFIERS = new Set(["helium", "heliumdb"]);
 const LIVE_IDENTIFIER_PATTERN = /(?:^|[._-])(?:prod(?:uction)?|live)(?:$|[._-])/iu;
+const RENDER_STAGING_DATABASE_HOST_PATTERN = /^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?\.render\.com$/iu;
+const STAGING_DATABASE_NAME_PATTERN = /^ah_sheli_staging(?:[-_][a-z0-9]+)*$/u;
+const RENDER_DATABASE_RESOURCE_ID_PATTERN = /^dpg-[a-z0-9-]{4,}$/iu;
 
 function blocked(reason) {
   return new Error(`Database connection blocked: ${reason}`);
@@ -22,6 +25,9 @@ function assertNoKnownProductionEnvironmentIdentifiers(env) {
     "DB_NAME",
     "DATABASE_HOST",
     "DATABASE_NAME",
+    "STAGING_DATABASE_HOST",
+    "STAGING_DATABASE_NAME",
+    "STAGING_DATABASE_RESOURCE_ID",
   ]) {
     const value = env[key];
     if (typeof value === "string" && value.trim()) {
@@ -74,6 +80,48 @@ export function validateLocalLabDatabaseUrl(value) {
   return value;
 }
 
+function validateStagingDatabaseUrl(env) {
+  if (env.DEPLOYMENT_ENV !== "staging" || env.DATA_ENVIRONMENT !== "staging") {
+    throw blocked("Staging database access requires matching staging deployment and data identities.");
+  }
+  if (env.NODE_ENV !== "production" || env.CLOUD_CUTOVER_APPROVED !== "0") {
+    throw blocked("Staging database access requires the production runtime and a disabled Production cutover flag.");
+  }
+  if (env.REPLIT_ENVIRONMENT === "production") {
+    throw blocked("Staging database access is not allowed in a Replit Production runtime.");
+  }
+
+  const databaseUrl = env.DATABASE_URL;
+  if (!databaseUrl) throw blocked("DATABASE_URL is missing for the declared Staging target.");
+  const { host, databaseName } = parseDatabaseTarget(databaseUrl);
+  assertNotKnownProductionTarget(databaseUrl);
+
+  const expectedHost = String(env.STAGING_DATABASE_HOST ?? "").trim().toLowerCase();
+  const expectedName = String(env.STAGING_DATABASE_NAME ?? "").trim().toLowerCase();
+  const resourceId = String(env.STAGING_DATABASE_RESOURCE_ID ?? "").trim();
+  if (!expectedHost || !expectedName || !resourceId) {
+    throw blocked("verified Staging database host, name, and Render resource ID are required.");
+  }
+  assertNotKnownProductionIdentifier(expectedHost);
+  assertNotKnownProductionIdentifier(expectedName);
+  assertNotKnownProductionIdentifier(resourceId);
+
+  if (!RENDER_STAGING_DATABASE_HOST_PATTERN.test(expectedHost)) {
+    throw blocked("the expected Staging database host must be a Render internal hostname.");
+  }
+  if (!STAGING_DATABASE_NAME_PATTERN.test(expectedName)) {
+    throw blocked("the expected Staging database name must use the dedicated ah_sheli_staging namespace.");
+  }
+  if (!RENDER_DATABASE_RESOURCE_ID_PATTERN.test(resourceId)) {
+    throw blocked("the expected Staging database resource ID is invalid.");
+  }
+  if (host !== expectedHost || databaseName !== expectedName) {
+    throw blocked("DATABASE_URL does not match the independently verified Staging database identity.");
+  }
+
+  return databaseUrl;
+}
+
 export function databaseUrlForProcess(env = process.env) {
   assertNoKnownProductionEnvironmentIdentifiers(env);
   const isTestProcess = env.NODE_ENV === "test" || Boolean(env.NODE_TEST_CONTEXT);
@@ -93,6 +141,10 @@ export function databaseUrlForProcess(env = process.env) {
       throw blocked("an explicit, matching LAB_DATABASE_URL is required.");
     }
     return validateLocalLabDatabaseUrl(labUrl);
+  }
+
+  if (env.DEPLOYMENT_ENV === "staging" || env.DATA_ENVIRONMENT === "staging") {
+    return validateStagingDatabaseUrl(env);
   }
 
   if (env.DATA_ENVIRONMENT === "lab") {
@@ -115,6 +167,9 @@ export function databaseUrlForProcess(env = process.env) {
   }
 
   if (env.DATA_ENVIRONMENT === "production") {
+    if (env.DEPLOYMENT_ENV && env.DEPLOYMENT_ENV !== "production") {
+      throw blocked("Production data access requires DEPLOYMENT_ENV=production.");
+    }
     if (env.NODE_ENV !== "production" || env.REPLIT_ENVIRONMENT === "development") {
       throw blocked("Production data access requires a Production runtime.");
     }

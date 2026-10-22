@@ -17,7 +17,14 @@ async function startSystem({
     throw new Error('Node.js 22.18 or later is required.');
   }
   installProcessEgressGuard(env);
-  if (env.NODE_ENV === 'production' && env.CLOUD_CUTOVER_APPROVED !== '1') {
+  const deploymentEnvironment = env.DEPLOYMENT_ENV
+    ?? (env.NODE_ENV === 'production' ? 'production' : 'development');
+  if (deploymentEnvironment === 'staging'
+      && (env.NODE_ENV !== 'production' || env.CLOUD_CUTOVER_APPROVED !== '0')) {
+    throw new Error('Staging requires NODE_ENV=production and CLOUD_CUTOVER_APPROVED=0.');
+  }
+  if (env.NODE_ENV === 'production' && deploymentEnvironment !== 'staging'
+      && env.CLOUD_CUTOVER_APPROVED !== '1') {
     throw new Error('Stop the previous worker and approve the production cutover first.');
   }
   const errors = await validateEnvironment(env);

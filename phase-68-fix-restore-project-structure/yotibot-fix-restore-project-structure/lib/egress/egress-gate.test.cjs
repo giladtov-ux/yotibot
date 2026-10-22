@@ -72,6 +72,28 @@ test("invalid approvals, environment mismatch, and wildcard targets are rejected
   }), EgressConfigurationError);
 });
 
+test("Staging egress approval uses deployment identity independently of NODE_ENV", () => {
+  const staging = createEgressPolicy({
+    ...approvedEnv("dpg-stage12345-a.oregon-postgres.render.com:5432"),
+    NODE_ENV: "production",
+    DEPLOYMENT_ENV: "staging",
+    EGRESS_APPROVAL_ENV: "staging",
+  });
+  assert.equal(staging.environment, "staging");
+  assert.equal(staging.approved, true);
+  assert.deepEqual(staging.targets, ["dpg-stage12345-a.oregon-postgres.render.com:5432"]);
+  const gate = createEgressGate(staging);
+  assert.throws(() => gate.authorize("https://api.telegram.org"), error =>
+    error.code === "EGRESS_TARGET_NOT_ALLOWLISTED");
+
+  assert.throws(() => createEgressPolicy({
+    ...approvedEnv("dpg-stage12345-a.oregon-postgres.render.com:5432"),
+    NODE_ENV: "production",
+    DEPLOYMENT_ENV: "staging",
+    EGRESS_APPROVAL_ENV: "production",
+  }), EgressConfigurationError);
+});
+
 test("browser connect policy is limited to explicitly approved origins", () => {
   const policy = createEgressPolicy({
     ...approvedEnv("accounts.example:443,api.telegram.org:443"),

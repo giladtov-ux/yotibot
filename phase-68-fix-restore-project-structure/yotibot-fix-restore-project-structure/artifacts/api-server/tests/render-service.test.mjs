@@ -69,7 +69,7 @@ test('worker readiness validates the internal service identity and active state'
   }
   assert.equal(await telegramWorkerReady(async () => { throw Error('offline'); }), false);
 });
-test('staging Telegram worker requires an explicit development opt-in and the current HTTPS dev host', () => {
+test('Staging Telegram worker requires an explicit switch and the current HTTPS dev host for Development', () => {
   const staging = compile('lib/telegram-staging.ts', {}, {}, { URL });
   const { shouldStartTelegramWorker, isDevelopmentTelegramWebhook } = staging;
   assert.equal(shouldStartTelegramWorker({ NODE_ENV: 'development' }), false);
@@ -80,6 +80,21 @@ test('staging Telegram worker requires an explicit development opt-in and the cu
     NODE_ENV: 'development', TELEGRAM_STAGING_ENABLED: 'true',
   }), true);
   assert.equal(shouldStartTelegramWorker({ NODE_ENV: 'production' }), true);
+  assert.equal(shouldStartTelegramWorker({
+    NODE_ENV: 'production', DEPLOYMENT_ENV: 'staging',
+  }), false);
+  assert.equal(shouldStartTelegramWorker({
+    NODE_ENV: 'production', DEPLOYMENT_ENV: 'staging', TELEGRAM_STAGING_ENABLED: 'true',
+  }), false);
+  assert.equal(shouldStartTelegramWorker({
+    NODE_ENV: 'production', DEPLOYMENT_ENV: 'staging', TELEGRAM_WORKER_ENABLED: 'false',
+  }), false);
+  assert.equal(shouldStartTelegramWorker({
+    NODE_ENV: 'production', DEPLOYMENT_ENV: 'staging', TELEGRAM_WORKER_ENABLED: 'true',
+  }), true);
+  assert.equal(shouldStartTelegramWorker({
+    NODE_ENV: 'production', DEPLOYMENT_ENV: 'production',
+  }), true);
   assert.equal(isDevelopmentTelegramWebhook(
     'https://staging.replit.dev/telegram/webhook', 'staging.replit.dev',
   ), true);

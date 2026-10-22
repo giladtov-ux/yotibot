@@ -10,6 +10,20 @@ import {
 } from "./database-isolation.mjs";
 
 const localLabUrl = "postgresql://lab_user@127.0.0.1:55432/ah_sheli_lab";
+const stagingHost = "dpg-stage12345-a.oregon-postgres.render.com";
+const stagingName = "ah_sheli_staging";
+const stagingDatabaseUrl = `postgresql://staging_user@${stagingHost}:5432/${stagingName}`;
+const stagingEnv = overrides => ({
+  NODE_ENV: "production",
+  DEPLOYMENT_ENV: "staging",
+  DATA_ENVIRONMENT: "staging",
+  CLOUD_CUTOVER_APPROVED: "0",
+  DATABASE_URL: stagingDatabaseUrl,
+  STAGING_DATABASE_HOST: stagingHost,
+  STAGING_DATABASE_NAME: stagingName,
+  STAGING_DATABASE_RESOURCE_ID: "dpg-stage12345",
+  ...overrides,
+});
 
 test("Lab test environment excludes inherited Production and generic database variables", () => {
   const env = createLabTestEnvironment({
@@ -247,6 +261,64 @@ test("bot database startup rejects an unverified identity before constructing a 
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /DATA_ENVIRONMENT is missing or unsupported/u);
   assert.doesNotMatch(result.stderr, /synthetic\\.invalid/u);
+});
+
+test("verified Render Staging database identity is accepted without opening a connection", () => {
+  const env = stagingEnv();
+  assert.equal(databaseUrlForProcess(env), stagingDatabaseUrl);
+
+  let capturedOptions;
+  const pool = createGuardedPool(env, options => {
+    capturedOptions = options;
+    return { mocked: true };
+  }, { max: 1 });
+
+  assert.deepEqual(pool, { mocked: true });
+  assert.equal(capturedOptions.connectionString, stagingDatabaseUrl);
+  assert.equal(capturedOptions.max, 1);
+});
+
+test("Staging database access fails closed for unverified or Production identities before pool construction", () => {
+  const cases = [
+    stagingEnv({ DEPLOYMENT_ENV: undefined }),
+    stagingEnv({ DATA_ENVIRONMENT: "production" }),
+    stagingEnv({ CLOUD_CUTOVER_APPROVED: "1" }),
+    stagingEnv({ NODE_ENV: "development" }),
+    stagingEnv({ STAGING_DATABASE_HOST: undefined }),
+    stagingEnv({ STAGING_DATABASE_NAME: undefined }),
+    stagingEnv({ STAGING_DATABASE_RESOURCE_ID: undefined }),
+    stagingEnv({ STAGING_DATABASE_RESOURCE_ID: "dpg-prod-12345" }),
+    stagingEnv({
+      STAGING_DATABASE_HOST: "dpg-other12345-a.oregon-postgres.render.com",
+    }),
+    stagingEnv({
+      DATABASE_URL: "postgresql://prod-db.example/ah_sheli_staging",
+    }),
+    stagingEnv({
+      DATABASE_URL: "postgresql://dpg-stage12345-a.oregon-postgres.render.com/ah_sheli_prod",
+    }),
+    stagingEnv({
+      DATABASE_URL: "postgresql://dpg-stage12345-a.example.invalid/ah_sheli_staging",
+      STAGING_DATABASE_HOST: "dpg-stage12345-a.example.invalid",
+    }),
+    stagingEnv({ REPLIT_ENVIRONMENT: "production" }),
+  ];
+
+  for (const env of cases) {
+    let poolFactoryCalled = false;
+    assert.throws(() => createGuardedPool(env, () => {
+      poolFactoryCalled = true;
+      return {};
+    }, {}), /Database connection blocked/u);
+    assert.equal(poolFactoryCalled, false);
+  }
+});
+
+test("a Node test process cannot use Render Staging database credentials", () => {
+  assert.throws(
+    () => databaseUrlForProcess(stagingEnv({ NODE_TEST_CONTEXT: "child-v8" })),
+    /test database access requires DATA_ENVIRONMENT=lab/u,
+  );
 });
 
 test("Production URL is accepted only when both declared and runtime environments are Production", () => {

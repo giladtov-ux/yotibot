@@ -11,7 +11,8 @@ import {
 } from "../src/lib/whop-config.ts";
 
 const sandbox = {
-  NODE_ENV: "development",
+  NODE_ENV: "production",
+  DEPLOYMENT_ENV: "staging",
   WHOP_MODE: "live",
   WHOP_API_KEY: "live-key-must-not-be-used",
   WHOP_COMPANY_ID: "biz_live",

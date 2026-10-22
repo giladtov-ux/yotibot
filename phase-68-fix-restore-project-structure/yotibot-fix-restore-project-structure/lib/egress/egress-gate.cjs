@@ -86,12 +86,16 @@ function targetKey(host, port) {
   return `${host.includes(":") ? `[${host}]` : host}:${Number(port)}`;
 }
 
+function deploymentEnvironment(env) {
+  return String(env.DEPLOYMENT_ENV ?? env.NODE_ENV ?? "").trim();
+}
+
 function createEgressPolicy(env = {}) {
   const approval = env.EGRESS_APPROVED;
   if (approval === undefined || approval === "" || approval === "0") {
     return Object.freeze({
       approved: false,
-      environment: String(env.NODE_ENV ?? ""),
+      environment: deploymentEnvironment(env),
       approvalRef: "",
       approvedBy: "",
       targets: Object.freeze([]),
@@ -99,7 +103,7 @@ function createEgressPolicy(env = {}) {
   }
   if (approval !== "1") throw new EgressConfigurationError();
 
-  const environment = String(env.NODE_ENV ?? "").trim();
+  const environment = deploymentEnvironment(env);
   const approvalEnvironment = String(env.EGRESS_APPROVAL_ENV ?? "").trim();
   const approvalRef = String(env.EGRESS_APPROVAL_REF ?? "").trim();
   const approvedBy = String(env.EGRESS_APPROVED_BY ?? "").trim();
@@ -645,7 +649,7 @@ function installProcessEgressGuard(env = process.env) {
     invalid = true;
     policy = Object.freeze({
       approved: false,
-      environment: String(env.NODE_ENV ?? ""),
+      environment: deploymentEnvironment(env),
       approvalRef: "",
       approvedBy: "",
       targets: Object.freeze([]),

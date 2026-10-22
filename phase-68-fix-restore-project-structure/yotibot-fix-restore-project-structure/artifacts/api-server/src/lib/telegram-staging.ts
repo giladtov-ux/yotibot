@@ -1,4 +1,7 @@
 export function shouldStartTelegramWorker(env: NodeJS.ProcessEnv = process.env): boolean {
+  if (env.DEPLOYMENT_ENV === "staging") {
+    return env.TELEGRAM_WORKER_ENABLED === "true";
+  }
   return env.NODE_ENV === "production"
     || (env.NODE_ENV === "development" && env.TELEGRAM_STAGING_ENABLED === "true");
 }
