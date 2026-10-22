@@ -162,3 +162,17 @@ mtime_ms = 1792659827835
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aa92bd01-385d-4484-80d2-b8a32576dccf/27358c5a-1020-4165-86d1-627e1e10f691/707a23b6-2647-4afb-958a-78949723e2b8"
 storage_version_token = "1792659900934596"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "g6xcITvb91jgM3ew3rPNN"
+uri = "file://phase-68-fix-restore-project-structure/yotibot-fix-restore-project-structure/docs/phase-112b-log-audit-report.md"
+type = "text"
+title = "Phase 112B Read-Only Database Log Audit"
+description = "Verified log timeline and target metadata, missing PID/identity evidence, DDL/DML log gaps, and owner recommendations."
+logical_id = "10bac519-ab01-4895-a021-ee06d2c49567"
+content_hash = "sha256:a1804d82f38bc1f887b9c2da3232ac42bbbf1f0f368200abcab2e2928e654bf4"
+size = 9478
+mtime_ms = 1792660221644
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aa92bd01-385d-4484-80d2-b8a32576dccf/10bac519-ab01-4895-a021-ee06d2c49567/547e57a7-c048-4649-8110-60ef967cf2b2"
+storage_version_token = "1792660250869406"
+content_type = "text/markdown"
