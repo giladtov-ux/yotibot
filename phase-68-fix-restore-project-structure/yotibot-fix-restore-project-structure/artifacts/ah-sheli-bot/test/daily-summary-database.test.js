@@ -50,7 +50,7 @@ test("exact two-section Telegram format reports empty records honestly and dates
   "היום:\nלא סומנו משימות שהושלמו היום.\n\nמחר (שלישי, 13.10):\nלא נשמר לו״ז עם שעות למחר.");
 });
 test("real PostgreSQL executes the production reader SQL with an isolated read-only fixture", {
-  skip: !process.env.DATABASE_URL,
+  skip: process.env.LAB_SQL_TESTS_ENABLED !== "1",
 }, async () => {
   const value = {
     lists: { owner: {

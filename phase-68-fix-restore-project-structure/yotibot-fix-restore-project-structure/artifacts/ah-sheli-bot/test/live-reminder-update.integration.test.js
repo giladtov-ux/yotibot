@@ -5,7 +5,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 test("real PostgreSQL UPDATE and reload show the new tomorrow deadline without touching application tables", {
-  skip: process.env.AH_SHELI_RUN_ISOLATED_DATABASE_TESTS !== "1",
+  skip: process.env.LAB_SQL_TESTS_ENABLED !== "1"
+    || process.env.AH_SHELI_RUN_ISOLATED_DATABASE_TESTS !== "1",
 }, async () => {
   const directory = await mkdtemp(path.join(tmpdir(), "ah-sheli-time-postgres-"));
   process.env.AH_SHELI_DATA_DIR = directory;

@@ -7,7 +7,8 @@ import path from "node:path";
 // Opt-in only. All SQL is redirected to a session-local temporary table:
 // no real owner state, user lists, reminders or application tables are changed.
 test("real PostgreSQL verifies completion, deletion, cleanup and reload using only an isolated temporary table", {
-  skip: process.env.AH_SHELI_RUN_ISOLATED_DATABASE_TESTS !== "1",
+  skip: process.env.LAB_SQL_TESTS_ENABLED !== "1"
+    || process.env.AH_SHELI_RUN_ISOLATED_DATABASE_TESTS !== "1",
 }, async () => {
   const directory = await mkdtemp(path.join(tmpdir(), "ah-sheli-isolated-postgres-"));
   process.env.AH_SHELI_DATA_DIR = directory;

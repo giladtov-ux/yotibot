@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { createLabTestEnvironment } from "./database-isolation.mjs";
 
 const args = process.argv.slice(2);
@@ -16,6 +17,10 @@ try {
 }
 
 const result = spawnSync(process.execPath, args, {
+  input: undefined,
+  // These guard and teardown tests always run alongside the package suite.
+  // The child receives no database URL, so database-backed fixtures stay skipped.
+  args: undefined,
   env,
   stdio: "inherit",
 });

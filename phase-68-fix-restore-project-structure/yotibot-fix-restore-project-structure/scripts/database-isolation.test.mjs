@@ -14,7 +14,7 @@ test("Lab test environment excludes inherited Production and generic database va
   const env = createLabTestEnvironment({
     PATH: "/safe/path",
     REPLIT_ENVIRONMENT: "production",
-    DATABASE_URL: "postgresql://production.invalid/production_db",
+    DATABASE_URL: "postgresql://fixture.invalid/fixture_db",
     REPLIT_DB_URL: "runtime-managed-sentinel",
     CLERK_SECRET_KEY: "secret-sentinel",
     TELEGRAM_BOT_TOKEN: "token-sentinel",
@@ -34,19 +34,51 @@ test("Lab test environment excludes inherited Production and generic database va
   assert.equal(env.REPLIT_ENVIRONMENT, undefined);
 });
 
-test("only an explicit local Lab URL is forwarded to test processes", () => {
-  const env = createLabTestEnvironment({ LAB_DATABASE_URL: localLabUrl });
-  assert.equal(env.LAB_DATABASE_URL, localLabUrl);
-  assert.equal(env.DATABASE_URL, localLabUrl);
-  assert.equal(databaseUrlForProcess(env), localLabUrl);
+test("standard test runner halts on known Production targets and refuses database URLs", () => {
+  assert.throws(
+    () => createLabTestEnvironment({ DATABASE_URL: "postgresql://helium/heliumdb" }),
+    /known Production or live identifier/u,
+  );
+  assert.throws(
+    () => createLabTestEnvironment({ DATABASE_URL: "postgresql://prod-db.example/ah_sheli_lab" }),
+    /known Production or live identifier/u,
+  );
+  assert.throws(
+    () => createLabTestEnvironment({ LAB_DATABASE_URL: localLabUrl }),
+    /mock-only/u,
+  );
+  assert.throws(
+    () => createLabTestEnvironment({ LAB_SQL_TESTS_ENABLED: "1" }),
+    /does not permit database-backed tests/u,
+  );
 });
 
 test("test launcher rejects remote Lab database targets before spawning tests", () => {
   assert.throws(
     () => createLabTestEnvironment({
-      LAB_DATABASE_URL: "postgresql://u:p@prod.example.invalid/prod",
+      LAB_DATABASE_URL: "postgresql://lab_user@remote.example.invalid/ah_sheli_lab",
     }),
     /restricted to a local host/u,
+  );
+});
+
+test("only explicit, local, Lab-named SQL opt-in is accepted by the database guard", () => {
+  const env = {
+    NODE_ENV: "test",
+    NODE_TEST_CONTEXT: "child-v8",
+    DATA_ENVIRONMENT: "lab",
+    LAB_SQL_TESTS_ENABLED: "1",
+    LAB_DATABASE_URL: localLabUrl,
+    DATABASE_URL: localLabUrl,
+  };
+  assert.equal(databaseUrlForProcess(env), localLabUrl);
+  assert.throws(
+    () => databaseUrlForProcess({ ...env, DATABASE_URL: "postgresql://localhost/heliumdb" }),
+    /known Production or live identifier/u,
+  );
+  assert.throws(
+    () => databaseUrlForProcess({ ...env, DATABASE_URL: "postgresql://localhost/ah_sheli_live" }),
+    /known Production or live identifier/u,
   );
 });
 
@@ -61,8 +93,15 @@ test("unverified, missing, mismatched, or wrong-mode identities fail before pool
       DATABASE_URL: "postgresql://prod.invalid/db",
     },
     {
+      NODE_ENV: "production",
+      NODE_TEST_CONTEXT: "child-v8",
+      DATA_ENVIRONMENT: "production",
+      DATABASE_URL: "postgresql://helium/heliumdb",
+    },
+    {
       NODE_ENV: "test",
       DATA_ENVIRONMENT: "lab",
+      LAB_SQL_TESTS_ENABLED: "1",
       LAB_DATABASE_URL: localLabUrl,
       DATABASE_URL: localLabUrl,
       REPLIT_ENVIRONMENT: "production",
@@ -128,10 +167,18 @@ test("Lab URL must be a PostgreSQL URL with a local host and named database", ()
   assert.equal(validateLocalLabDatabaseUrl(localLabUrl), localLabUrl);
   assert.throws(
     () => validateLocalLabDatabaseUrl("https://localhost/lab"),
-    /must use PostgreSQL/u,
+    /not PostgreSQL/u,
   );
   assert.throws(
-    () => validateLocalLabDatabaseUrl("postgresql://localhost/"),
-    /database name is missing/u,
+    () => validateLocalLabDatabaseUrl("postgresql://localhost/heliumdb"),
+    /known Production or live identifier/u,
   );
+  assert.throws(
+    () => validateLocalLabDatabaseUrl("postgresql://127.0.0.1/fixture_db"),
+    /dedicated ah_sheli_lab namespace/u,
+  );
+});
+
+test("Node test runner supplies a marker so Production settings cannot be accepted inside a test", () => {
+  assert.ok(process.env.NODE_TEST_CONTEXT);
 });

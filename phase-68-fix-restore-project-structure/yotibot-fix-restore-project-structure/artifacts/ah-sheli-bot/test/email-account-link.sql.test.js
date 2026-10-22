@@ -5,7 +5,7 @@ import { getPool, closeDatabase } from "../src/database.js";
 import { handleEmailAccountLink } from "../src/email-account-link.js";
 
 test("email identity proofs use isolated real SQL, explicit consent and atomic uniqueness", {
-  skip: !process.env.DATABASE_URL,
+  skip: process.env.LAB_SQL_TESTS_ENABLED !== "1",
 }, async t => {
   const client = await getPool().connect();
   const schema = `qa_email_${randomBytes(8).toString("hex")}`;

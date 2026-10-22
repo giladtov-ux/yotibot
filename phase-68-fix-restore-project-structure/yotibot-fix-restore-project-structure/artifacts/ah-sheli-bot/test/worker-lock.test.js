@@ -111,7 +111,8 @@ test("heartbeats do not overlap when the database is slow", async () => {
 // Explicit opt-in; no bot, Telegram requests, schema, or personal records.
 // A separate advisory key ensures this probe cannot compete with the worker.
 test("PostgreSQL preserves exclusivity and permits recovery after connection loss", {
-  skip: process.env.AH_SHELI_DB_LOCK_TEST !== "1",
+  skip: process.env.LAB_SQL_TESTS_ENABLED !== "1"
+    || process.env.AH_SHELI_DB_LOCK_TEST !== "1",
 }, async () => {
   const options = {
     connectionString: databaseUrlForProcess(process.env),
@@ -147,7 +148,8 @@ test("PostgreSQL preserves exclusivity and permits recovery after connection los
 });
 
 test("an idle query-pool error is handled and does not invalidate the lock", {
-  skip: process.env.AH_SHELI_DB_LOCK_TEST !== "1",
+  skip: process.env.LAB_SQL_TESTS_ENABLED !== "1"
+    || process.env.AH_SHELI_DB_LOCK_TEST !== "1",
 }, async () => {
   const pool = getPool();
   try {

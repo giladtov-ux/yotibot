@@ -56,7 +56,7 @@ test("Telegram schedules a real saved event without changing or completing any t
   assert.equal(persisted.reminders[0].dueAt, store.reminders[0].dueAt);
 });
 test("real PostgreSQL commits scheduling to events while the SQL task rows remain identical", {
-  skip: !process.env.DATABASE_URL,
+  skip: process.env.LAB_SQL_TESTS_ENABLED !== "1",
 }, async () => {
   const { getPool, closeDatabase } = await import("../src/database.js");
   const { initializeStatePersistence } = await import("../src/store.js");

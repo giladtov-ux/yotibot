@@ -1,5 +1,6 @@
 export type EnvironmentMap = Record<string, string | undefined>;
 
+export function assertNotKnownProductionTarget(value: string): void;
 export function validateLocalLabDatabaseUrl(value: string): string;
 export function databaseUrlForProcess(env?: EnvironmentMap): string;
 export function createGuardedPool(

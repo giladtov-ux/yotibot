@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { getPool, closeDatabase } from "../src/database.js";
 
 test("goal deadlines and shared-list deletion commit atomically in isolated real SQL", {
-  skip: !process.env.DATABASE_URL,
+  skip: process.env.LAB_SQL_TESTS_ENABLED !== "1",
 }, async () => {
   const directory = await mkdtemp(join(tmpdir(), "ah-sheli-shares-"));
   // Set isolation before importing any module with a transitive store import.

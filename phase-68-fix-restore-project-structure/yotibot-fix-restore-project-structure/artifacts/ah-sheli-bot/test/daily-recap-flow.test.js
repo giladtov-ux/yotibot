@@ -156,7 +156,7 @@ test("topic switch invalidates recap; bare completion advances current recap ins
   assert.equal((await h.callback(`rc:${old}:d`)).stale, true);
 });
 test("real SQL recap persists completion, deferred date, cancellation and durable callback session", {
-  skip: !process.env.DATABASE_URL,
+  skip: process.env.LAB_SQL_TESTS_ENABLED !== "1",
 }, async () => {
   const client = await getPool().connect();
   try {

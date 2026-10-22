@@ -133,7 +133,7 @@ test("an explicit goals destination is retained while the missing time is suppli
 });
 
 test("actual PostgreSQL commits the new event and task together, then returns both through SQL", {
-  skip: !process.env.DATABASE_URL,
+  skip: process.env.LAB_SQL_TESTS_ENABLED !== "1",
 }, async () => {
   const { getPool, closeDatabase } = await import("../src/database.js");
   const client = await getPool().connect();

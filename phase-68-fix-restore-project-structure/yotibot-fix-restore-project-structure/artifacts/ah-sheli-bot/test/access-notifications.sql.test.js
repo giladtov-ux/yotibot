@@ -6,7 +6,7 @@ import { createUserAccess } from "../src/user-access.js";
 import { sendAccessNotification } from "../src/access-notifications.js";
 
 test("real SQL uses atomic new-user detection and durable unique attempts without changing user data", {
-  skip: !process.env.DATABASE_URL,
+  skip: process.env.LAB_SQL_TESTS_ENABLED !== "1",
 }, async () => {
   const client = await getPool().connect();
   try {
