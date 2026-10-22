@@ -1,0 +1,16 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "_I02wv7E9obDcaJVEHiVs"
+uri = "file://phase-105-production-readiness-report.md"
+type = "text"
+title = "Phase 105 Production Readiness Report"
+description = "Read-only production readiness findings, evidence, cutover gates, stop-loss triggers, and rollback plan."
+logical_id = "8b33c523-7fdc-466c-8837-1247df27ee8f"
+content_hash = "sha256:28826838076e171898d6bc23e31e62f67ad4d7d5e3f0e5a224db0355d8e9c9f3"
+size = 19929
+mtime_ms = 1792644406678
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aa92bd01-385d-4484-80d2-b8a32576dccf/8b33c523-7fdc-466c-8837-1247df27ee8f/32d1fc9e-0cb3-42fc-bf02-900956d8a2df"
+storage_version_token = "1792644442164904"
+content_type = "text/markdown"
