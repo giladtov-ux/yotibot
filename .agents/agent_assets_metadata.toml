@@ -204,3 +204,17 @@ mtime_ms = 1792661487551
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aa92bd01-385d-4484-80d2-b8a32576dccf/a1dfd3de-d185-424c-9a1d-b0bf4e06cf7d/3553881f-f195-4dba-a7c9-bcccdb8b4b20"
 storage_version_token = "1792661563888595"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "kyGuCzvEhZmqjTJofPxRW"
+uri = "file://phase-68-fix-restore-project-structure/yotibot-fix-restore-project-structure/docs/phase-115-candidate-identity-report.md"
+type = "text"
+title = "Phase 115 — Candidate Identity Report"
+description = "Verified local candidate identity, build/test results, blockers, and NO-GO findings."
+logical_id = "060046d0-a001-4c41-a1e7-b4cd78a1bfdb"
+content_hash = "sha256:34bdb333255798649fd4dc69a9846fc73d640597b32ffff325942f8cdc30b36c"
+size = 12801
+mtime_ms = 1792662768007
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aa92bd01-385d-4484-80d2-b8a32576dccf/060046d0-a001-4c41-a1e7-b4cd78a1bfdb/20efc30b-6cd7-4828-8d28-f2abfb778e6c"
+storage_version_token = "1792662796341100"
+content_type = "text/markdown"
