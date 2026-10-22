@@ -1,15 +1,15 @@
 # Phase 106 — Render Production Deployment Diagnosis
 
 **Mode:** Read-only diagnosis
-**Status:** **NO-GO** — the active Render deployment and its source revision are not verified.
+**Status:** **NO-GO** — the Render dashboard details identify a pinned deployment, but its full deployed SHA, latest deployment result/date, runtime logs, and effective environment/database wiring remain unverified.
 **Assessment date:** 2026-10-22
-**Scope:** Local repository/configuration inspection and unauthenticated public HTTP observations only. No secret values were read or printed. No Production database, environment, webhook, or provider configuration was accessed or changed. No deployment, live service launch, or Telegram message was initiated.
+**Scope:** Local repository/configuration inspection, unauthenticated public HTTP observations, and Render Dashboard details supplied by the account owner. Dashboard details were not independently retrieved. No secret values were read or printed. No Production database, environment, webhook, or provider configuration was accessed or changed. No deployment, live service launch, or Telegram message was initiated.
 
 ## Executive finding
 
-The documented Render host, `https://yotibot-azbu.onrender.com`, resolved and answered requests, but its root, health, and webhook URLs returned the same plain-text placeholder: **`Yotibot is running!`**. The current project source does not implement that response. Its expected root is an HTML application, and its health routes return JSON including bot readiness and, at `/api/healthz`, build identity.
+The account owner reports that Render is serving a Web Service named **`yotbot`**, connected to **`gladkov-ux/yotbot`**, branch **`main`**, pinned to abbreviated commit **`5d10871`** with auto-deploy disabled. The previously observed public host, `https://yotibot-azbu.onrender.com`, returned the same plain-text placeholder—**`Yotibot is running!`**—at its root, health, and webhook URLs. The current project source does not implement that response.
 
-The response is therefore not evidence that this repository's API or bot worker is serving traffic. The most consistent explanations are a placeholder/stale Render deployment, a different Render service or connected repository/branch, or an incorrect deployment build/start configuration. Local evidence cannot distinguish among these causes because Render service metadata and runtime logs are not available.
+The placeholder is not evidence that this repository's API or bot worker is serving traffic. The dashboard's pinned `5d10871` differs from the Phase 106 verified runtime source `55665848ff6d43a08afc4c9ae8c6a6f1b41bf069` and the account owner's cited latest `main` SHA `72e8ac6626be510926986b4a4b0d1761ffa5b817`. The service name also differs from the local Render template name (`yotbot` versus `ah-sheli`). These facts support a stale or mismatched deployment as a likely explanation, but the abbreviated SHA is not present in the local Git object database, so the exact code diff and cause cannot yet be confirmed.
 
 The repository's Render configuration is explicitly **preparation-only**: automatic deployment is disabled, and `CLOUD_CUTOVER_APPROVED` defaults to `0`. The root launcher intentionally refuses to start a Production process unless that flag is explicitly `1`. Do not change this flag as part of diagnosis; activating the service requires a separate approval.
 
@@ -29,6 +29,17 @@ The webhook response included `x-render-origin-server: Render`. DNS resolved and
 The repository's `CLOUD_DEPLOYMENT.md` explicitly warns that HTTP 200 with this placeholder body is **not** proof that the project's worker is processing messages. The literal placeholder string occurs in a test fixture and deployment documentation, not in the application runtime source found during this review.
 
 Separately, Replit deployment metadata for this workspace reported `isDeployed=false` with no Replit Production URL. That describes the current Replit project only; it does not identify or verify the external Render service.
+
+### Render Dashboard details supplied by the account owner
+
+- Service: `yotbot` — Web Service
+- Connected repository: `gladkov-ux/yotbot`
+- Branch: `main`
+- Pinned deployed commit shown: `5d10871` (abbreviated SHA)
+- Auto-deploy: disabled
+- Latest deployment status and date: not included in the supplied details
+
+These are owner-provided Dashboard findings, not independently read Render metadata. The local `render.yaml` names its prepared service `ah-sheli`; Render service names can be changed, so this mismatch needs confirmation against the service's repository/root/build settings rather than being treated alone as proof of a wrong repository.
 
 ## 2. Local application entry points and expected behavior
 
@@ -81,7 +92,10 @@ These are requirements derived from local code, **not confirmation that any Prod
 Local repository evidence:
 
 - Current branch: `main`
-- Commit at inspection time: `72e8ac6626be510926986b4a4b0d1761ffa5b817` (the working tree was clean before this report was added)
+- The account owner cites latest `main` as `72e8ac6626be510926986b4a4b0d1761ffa5b817`.
+- The local workspace is now at `174b3c0307f6185e83d5e679854a5777a5feb757`, a documentation/agent-metadata-only follow-up on the cited `72e8ac...` state; it is not a new runtime candidate.
+- The last verified Phase 106 runtime source remains `55665848ff6d43a08afc4c9ae8c6a6f1b41bf069`; the Phase 106 report records build ID `phase-106-baseline-6bd4a6b2-2-g5566584`, `releaseTag: none`, `dirty: false`.
+- The current local checkout later received documentation/agent-metadata-only commits; no runtime application source changed after the verified `55665848...` build.
 - The local repository has a `gitsafe-backup` remote and `gitsafe-backup/main` tracking ref. No Render account metadata or connected Render source ref is available locally.
 - The fixed annotated tag `phase-106-baseline-6bd4a6b2` dereferences to `6bd4a6b2b6baa56570f95476e7df2adeb096dc6f`. `docs/release-tracking.md` records this tag as local-only and says it must not be moved. It is an earlier provenance baseline, not the latest Phase 106 runtime build.
 - The last verified Phase 106 application build recorded locally is:
@@ -90,8 +104,9 @@ Local repository evidence:
   - **Release tag:** none
   - **Dirty:** `false`
 - Git comparison of current `HEAD` against `55665848ff6d43a08afc4c9ae8c6a6f1b41bf069` shows only agent metadata, memory, and documentation changes; no runtime application source files changed after that verified build.
+- The Dashboard's abbreviated `5d10871` cannot be resolved with the local Git object database (`git cat-file` finds no matching commit), so a safe, exact diff against that deployed revision cannot be calculated from this checkout.
 
-**Exact target limitation:** `55665848ff6d43a08afc4c9ae8c6a6f1b41bf069` is the exact last verified runtime source baseline available in the local record. `72e8ac6626be510926986b4a4b0d1761ffa5b817` is the current clean checkout (documentation/metadata ahead). Neither local Git state nor the public endpoint proves which SHA Render actually deployed. The deployed source SHA/build remains **unknown** until Render's service/deploy metadata or runtime logs are provided.
+**Exact target limitation:** The exact last verified runtime source baseline is `55665848ff6d43a08afc4c9ae8c6a6f1b41bf069`. The account owner identifies the pinned Render revision as `5d10871` and latest `main` as `72e8ac6626be510926986b4a4b0d1761ffa5b817`; the deployed value is only seven characters and is absent locally. Obtain its full 40-character SHA before claiming an exact source comparison or selecting a deployment target.
 
 ## 4. Diagnosis: expected versus observed
 
@@ -102,32 +117,45 @@ Local repository evidence:
 | The literal placeholder is absent from runtime source and appears in test/documentation contexts. | The placeholder response is not emitted by the inspected application implementation. |
 | `render.yaml` is marked preparation-only, auto-deploy is off, and the default cutover flag is `0`. | A code push alone is not expected to update Render. If the blueprint settings are applied unchanged, the launcher intentionally refuses to start the Production app. |
 | Replit reports no deployment for this workspace, while the public hostname responds from Render. | The public host is external to the current Replit Published deployment; Replit deployment metadata cannot identify its Git source or current build. |
+| The account owner reports Render is pinned to `5d10871`, with auto-deploy disabled, while the verified runtime build is from `55665848...` and the cited latest `main` is `72e8ac...`. | Render will not follow later commits automatically. The pin is a strong candidate for the stale-code explanation, but the exact source diff and deployed build remain unverified until the full SHA and deployment record are available. |
+| The Dashboard service name is `yotbot`; the local prepared Blueprint names a service `ah-sheli`. | Confirm the service's connected repository, Root Directory, and effective settings. A service rename alone does not prove misconfiguration. |
 
-**Most likely diagnosis (not confirmed):** Render is serving a placeholder/stale deployment or a different service/source than this repository's intended `ah-sheli` API. A wrong root/build/start setting or an unapproved launch guard could also prevent the intended API from starting. Since the observed placeholder is not in the app source, the exact cause requires Render's service configuration and logs.
+**Most likely diagnosis (not confirmed):** Render is pinned to an older or otherwise mismatched revision and is serving a placeholder/stale deployment rather than the current full application. The account-provided pin and disabled auto-deploy explain why newer source would not have reached the service automatically. A wrong Root Directory/build/start setting or the unapproved launch guard could also prevent the intended API from starting. The exact cause still requires a full SHA, effective settings, and redacted logs.
 
 ## 5. Exact Render account-owner details needed
 
-No direct Render provider metadata or runtime-log access is available in this workspace. To finish the diagnosis, the account owner should provide read-only evidence for:
+No direct Render provider metadata or runtime-log access is available in this workspace. The account owner has supplied service name, type, repository, branch, abbreviated pinned SHA, and auto-deploy status. To finish the diagnosis, provide read-only evidence for:
 
-1. **Service identity:** Render workspace/team, service name and service ID, service type/status, region, public service URL, and any custom domain attached to it.
-2. **Source selection:** connected Git provider/repository (repository name is sufficient; redact any credentials), branch, currently deployed full commit SHA, deploy ID/status/time, and whether the connected source is the repository represented by local branch `main`.
-3. **Effective build settings:** Root Directory, build command, start command, Node version resolved by the service, health-check path, instance count, and whether a Blueprint or Dashboard override supplies the effective values.
-4. **Current deploy evidence:** the latest build/deploy log and recent runtime/startup logs, with all secret values, connection strings, authorization headers, and user data redacted.
-5. **Environment readiness by name/presence only:** whether required variable names from Section 2 are configured, and whether `CLOUD_CUTOVER_APPROVED` is `0` or `1`. Do **not** send the values.
-6. **Service/DB wiring:** whether the service points to the existing intended Production database and whether API and supervised worker share that same database. Provide identifiers/provider/region only—not a database URL or data dump.
-7. **Deployment behavior:** confirm whether `autoDeployTrigger: off` is effective and identify the last successful deployment that produced the placeholder response.
+1. **Full deployed SHA and deployment record:** the complete 40-character SHA for `5d10871`, deployment ID, latest status, and deployment timestamp. The short SHA cannot be resolved from this local checkout.
+2. **Service/source identity:** Render service ID, region, public URL/custom domain, connected Git provider/repository, and confirmation that the service is `gladkov-ux/yotbot` on `main`.
+3. **Effective settings:** Root Directory, build command, start command, resolved Node version, health-check path, instance count, and whether Blueprint or Dashboard overrides determine them.
+4. **Redacted logs:** latest build/deploy log and recent runtime/startup logs. Remove secret values, connection strings, authorization headers, and user data.
+5. **Environment names/presence only:** configured variable names and whether `CLOUD_CUTOVER_APPROVED` is `0` or `1`. Do **not** send values.
+6. **Database wiring:** database provider/service identifier and confirmation that Production is separate from Staging and the API and supervised worker share the intended Production database. Do not send a database URL or data.
+7. **Deployment behavior:** confirm auto-deploy is disabled and identify the deployment that first began returning the placeholder.
 
 Screenshots or copied settings with values redacted are sufficient; do not share secrets in chat.
 
-## 6. Minimum remediation steps — not executed
+## 6. Read-only preparation before any authorized Render update
 
-1. Use the read-only owner evidence above to identify the exact Render service returning the placeholder and the currently deployed SHA. Do not change settings until that service/source relationship is established.
-2. Compare the service's effective settings with `render.yaml` and `CLOUD_DEPLOYMENT.md`: repository root, Node `>=22.18`, build command, `node index.js` start command, `/healthz`, one service instance, and one supervised bot worker.
-3. Confirm the deployment source SHA and build ID from Render logs or `/api/healthz` once the actual application is serving. The expected Phase 106 reference is build `phase-106-baseline-6bd4a6b2-2-g5566584` from source `55665848ff6d43a08afc4c9ae8c6a6f1b41bf069`; the current checkout is `72e8ac6626be510926986b4a4b0d1761ffa5b817`. Do not claim either is deployed without provider evidence.
-4. Correct any wrong repository/branch, root directory, build command, start command, or health-check configuration only after a separate approved change plan. The repository template intentionally disables automatic deployment. Run typecheck and relevant API/bot tests separately; they are not part of the configured Render build command.
-5. Before any future live activation, separately verify required Production environment-variable **presence and correctness in the provider**, preserving all secret values. Keep `CLOUD_CUTOVER_APPROVED=0` until an explicit cutover approval; setting it to `1` starts the real Production app and can register the Telegram webhook.
-6. After an independently approved deployment, verify `GET /` returns the application HTML, `GET /healthz` returns ready bot-worker JSON, and `GET /api/healthz` returns JSON with the expected build ID/full commit and `dirty=false`. Do not use a generic HTTP 200 or the placeholder body as readiness evidence.
+These steps gather evidence only. They do not update the pinned commit, enable auto-deploy, change environment settings, or trigger a deployment.
 
-## Authorization boundary
+1. In the Render Dashboard, capture the `yotbot` service summary, latest deployment ID/status/date, full deployed SHA, repository/branch, Root Directory, effective Build/Start commands, Node version, health-check path, and instance count.
+2. Confirm the service is actually connected to `gladkov-ux/yotbot` branch `main`. Compare its effective settings with local `render.yaml` and `CLOUD_DEPLOYMENT.md`; record the `yotbot`/`ah-sheli` naming difference without assuming it is the cause.
+3. Obtain the full SHA behind `5d10871`. Verify that exact commit in the source repository, then compare its tree with the candidate SHA using a read-only GitHub compare view or a disposable read-only clone. Do not fetch into or change this workspace, and do not infer the diff from the seven-character prefix.
+4. Review the diff between the pinned deployed revision, the last verified runtime baseline `55665848ff6d43a08afc4c9ae8c6a6f1b41bf069`, and the account-cited latest `main` `72e8ac6626be510926986b4a4b0d1761ffa5b817`. Identify runtime, build, migration, and webhook changes separately. Confirm the candidate build is clean and its full SHA/build ID are recorded.
+5. Inspect the latest Render build and startup logs in redacted form. Determine whether the service ran `node index.js`, whether the cloud start guard rejected startup, or whether another process/build served the placeholder.
+6. Verify required environment-variable **names and presence only**, effective `CLOUD_CUTOVER_APPROVED` value, and Production/Staging database separation. Do not copy, print, or transmit any secret values.
+7. Record findings and stop for explicit human approval. Until that approval, keep auto-deploy disabled, keep the Render commit pin unchanged, and do not change `CLOUD_CUTOVER_APPROVED`.
 
-This report is the only requested output. No source, dependency, environment, database, webhook, or deployment configuration was changed. No live process was started and no Telegram API or payment action was performed. The default decision remains **NO-GO** pending account-owner evidence and explicit human approval.
+## 7. Minimum remediation after separate authorization — not executed
+
+1. Select one reviewed exact full 40-character candidate SHA; do not treat `5d10871`, `55665848...`, and `72e8ac...` as interchangeable.
+2. Correct any verified repository/branch/root/build/start/health mismatch only under an approved change plan. Run typecheck and relevant API/bot tests separately; the configured Render build command does not run them.
+3. Preserve the current production bot/database safeguards and ensure only the single API service supervises one bot worker.
+4. Change the pinned commit or trigger a manual deployment only after a separate explicit approval. Keep `CLOUD_CUTOVER_APPROVED` unchanged until the authorized cutover gate; setting it to `1` starts the Production app and may register the Telegram webhook.
+5. After an approved deployment, verify `GET /` serves application HTML, `GET /healthz` returns ready bot-worker JSON, and `GET /api/healthz` returns the expected build ID/full commit with `dirty=false`. A generic HTTP 200 or placeholder body is not readiness evidence.
+
+## 8. Authorization boundary
+
+Only this report is being updated. No source, dependency, environment, database, webhook, or Render deployment setting was changed. No commit was pushed or pinned in Render; no deployment or live process was started; and no Telegram API or payment action was performed. The default decision remains **NO-GO** pending the missing evidence and explicit human approval.
