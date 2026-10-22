@@ -9,6 +9,8 @@ type Log = {
 type Options = {
   logger: Log;
   production?: boolean;
+  deploymentEnvironment?: string;
+  dataEnvironment?: string;
   publicUrl?: string;
   request?: typeof fetch;
   schedule?: typeof setInterval;
@@ -24,13 +26,17 @@ type Options = {
 export function startSelfKeepAlive({
   logger,
   production = process.env.NODE_ENV === "production",
+  deploymentEnvironment = process.env.DEPLOYMENT_ENV,
+  dataEnvironment = process.env.DATA_ENVIRONMENT,
   publicUrl = process.env.SELF_KEEP_ALIVE_URL,
   request = fetch,
   schedule = setInterval,
   cancel = clearInterval,
   requestTimeoutMs = REQUEST_TIMEOUT_MS,
 }: Options): () => void {
-  if (!production) return () => {};
+  if (!production || deploymentEnvironment === "staging" || dataEnvironment === "staging") {
+    return () => {};
+  }
 
   let endpoint: URL;
   try {

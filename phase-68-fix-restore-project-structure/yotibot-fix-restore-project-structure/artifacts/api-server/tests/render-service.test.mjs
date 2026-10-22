@@ -20,14 +20,17 @@ function compile(name, mocks, env = {}, globals = {}) {
   });
   return module.exports;
 }
-function handler(name, ready, env = {}) {
+function handler(name, ready, env = {}, selectedPath = "/healthz") {
   let callback;
   compile(name, {
-    express: { Router: () => ({ get: (_path, cb) => { callback = cb; } }) },
+    express: { Router: () => ({ get: (path, cb) => { if (path === selectedPath) callback = cb; } }) },
     '@workspace/api-zod': { HealthCheckResponse: { parse: x => x } },
-    '../lib/telegram.functions': { telegramWorkerReady: async () => ready },
+    '../lib/telegram.functions': {
+      telegramWorkerReady: async () => typeof ready === 'function' ? ready() : ready,
+    },
     '../lib/build-info': { buildInfo: { id: 'test-build', commit: 'test-commit', releaseTag: null, dirty: false } },
   }, env);
+  if (!callback) throw Error(`No handler registered for ${selectedPath} in ${name}`);
   return async () => {
     const res = {
       code: 200, body: null,
@@ -39,18 +42,39 @@ function handler(name, ready, env = {}) {
   };
 }
 
-test('Render root health never declares a missing worker ready', async () => {
-  const cold = await handler('routes/bot-health.ts', false)();
-  assert.equal(cold.code, 503);
-  assert.deepEqual(cold.body, { ok: false, service: 'ah-sheli-bot', ready: false });
-  const warm = await handler('routes/bot-health.ts', true)();
-  assert.equal(warm.code, 200);
-  assert.equal(warm.body.ready, true);
+test('Render service health is healthy with Telegram worker disabled and never probes it', async () => {
+  let workerProbes = 0;
+  const probe = async () => { workerProbes++; return false; };
+  const rootHealth = await handler('routes/bot-health.ts', probe, { NODE_ENV: 'production' })();
+  const apiHealth = await handler('routes/health.ts', probe, { NODE_ENV: 'production' })();
+  assert.equal(rootHealth.code, 200);
+  assert.deepEqual(rootHealth.body, { status: 'ok', service: 'ah-sheli-api' });
+  assert.equal(apiHealth.code, 200);
+  assert.equal(apiHealth.body.status, 'ok');
+  assert.equal(workerProbes, 0);
 });
-test('production API health waits for its worker; development health stays compatible', async () => {
-  assert.equal((await handler('routes/health.ts', false, { NODE_ENV: 'production' })()).code, 503);
-  assert.equal((await handler('routes/health.ts', true, { NODE_ENV: 'production' })()).body.status, 'ok');
-  assert.equal((await handler('routes/health.ts', false, { NODE_ENV: 'development' })()).body.status, 'ok');
+test('separate worker health reports status without starting the worker', async () => {
+  let workerProbes = 0;
+  const workerHealth = await handler(
+    'routes/bot-health.ts', async () => { workerProbes++; return false; }, {}, '/worker-healthz',
+  )();
+  assert.equal(workerHealth.code, 503);
+  assert.deepEqual(workerHealth.body, { ok: false, service: 'ah-sheli-bot', ready: false });
+  assert.equal(workerProbes, 1);
+});
+test('API health is service liveness in production, staging, and development', async () => {
+  let workerProbes = 0;
+  const probe = async () => { workerProbes++; return false; };
+  for (const env of [
+    { NODE_ENV: 'production', DEPLOYMENT_ENV: 'staging', TELEGRAM_WORKER_ENABLED: 'false' },
+    { NODE_ENV: 'production' },
+    { NODE_ENV: 'development' },
+  ]) {
+    const response = await handler('routes/health.ts', probe, env)();
+    assert.equal(response.code, 200);
+    assert.equal(response.body.status, 'ok');
+  }
+  assert.equal(workerProbes, 0);
 });
 test('worker readiness validates the internal service identity and active state', async () => {
   const { telegramWorkerReady } = compile('lib/telegram.functions.ts', {});
@@ -110,6 +134,10 @@ test('Staging Telegram worker requires an explicit switch and the current HTTPS 
   assert.equal(isDevelopmentTelegramWebhook(
     'https://staging.replit.dev/telegram/webhook?redirect=1', 'staging.replit.dev',
   ), false);
+  assert.match(
+    source('index.ts'),
+    /if\s*\(shouldStartTelegramWorker\(process\.env\)\)\s*startTelegramWorker\(\)/u,
+  );
 });
 test('root receiver remains public while external email auth uses the configured tenant', () => {
   const app = source('app.ts');

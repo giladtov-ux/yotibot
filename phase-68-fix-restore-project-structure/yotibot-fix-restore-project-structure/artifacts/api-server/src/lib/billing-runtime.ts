@@ -1,12 +1,8 @@
-import { pool } from "@workspace/db";
 import { createHash, createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
-import { getWhopClient } from "./whopClient";
 import { logger } from "./logger";
 import { websiteOrigin, planAmounts } from "./billing-config";
-import { processVerifiedWhopWebhook } from "./whop-webhook";
-import { reconcileWhopPayments } from "./whop-reconciliation";
 import {
-  billingCheckoutEnabled, hasWhopSandboxConfiguration, whopCompanyId, whopMode, whopPlanId,
+  billingCheckoutEnabled, billingRuntimeEnabled, hasWhopSandboxConfiguration, whopCompanyId, whopMode, whopPlanId,
 } from "./whop-config";
 import egressGate from "../../../../lib/egress/egress-gate.cjs";
 
@@ -15,6 +11,15 @@ let init: Promise<void> | undefined;
 let webhookKey: string | undefined;
 let timer: NodeJS.Timeout | undefined, retryTimer: NodeJS.Timeout | undefined;
 const egressStopped = () => egressGate.getProcessEgressGate()?.status().tripped === true;
+
+async function loadBillingPool() {
+  return (await import("@workspace/db")).pool;
+}
+
+async function createWhopClient() {
+  const { getWhopClient } = await import("./whopClient");
+  return getWhopClient();
+}
 
 export function stopBillingRuntime() {
   ready = false;
@@ -34,7 +39,7 @@ export async function paidPrice(tier: keyof typeof planAmounts) {
   const id = whopPlanId(tier);
   const companyId = whopCompanyId();
   if (!id || !companyId) return null;
-  const plan = await (await getWhopClient()).plans.retrieve({ id });
+  const plan = await (await createWhopClient()).plans.retrieve({ id });
   if (plan.account?.id !== companyId || plan.currency !== "ils"
     || plan.plan_type !== "renewal" || plan.billing_period !== 30
     || plan.initial_price !== 0 || plan.renewal_price * 100 !== planAmounts[tier]
@@ -57,12 +62,18 @@ function decrypt(value: string) {
   return Buffer.concat([decipher.update(buffer.subarray(28)), decipher.final()]).toString("utf8");
 }
 export async function initializeBilling() {
+  if (!billingRuntimeEnabled()) {
+    stopBillingRuntime();
+    init = undefined;
+    return;
+  }
   if (egressStopped()) return;
   if (whopMode() === "sandbox" && !hasWhopSandboxConfiguration()) {
     ready = false;
     return;
   }
   init ??= (async () => {
+    const pool = await loadBillingPool();
     await pool.query(`CREATE TABLE IF NOT EXISTS public.ah_sheli_website_registrations(
         id uuid PRIMARY KEY, telegram_id text NOT NULL CHECK(telegram_id ~ '^[1-9][0-9]{0,19}$'),
         name text NOT NULL, email text NOT NULL, phone text NOT NULL,
@@ -85,7 +96,7 @@ export async function initializeBilling() {
       CREATE UNIQUE INDEX IF NOT EXISTS ah_sheli_whop_checkout_idx ON public.ah_sheli_website_registrations(whop_checkout_id);
       CREATE TABLE IF NOT EXISTS public.ah_sheli_whop_webhooks(
         endpoint text PRIMARY KEY, company_id text NOT NULL, secret_ciphertext text NOT NULL);`);
-    const client = await getWhopClient();
+    const client = await createWhopClient();
     ready = true;
     for (const tier of ["Pro", "Unlimited"] as const) {
       if (!await paidPrice(tier)) throw new Error("whop_catalog_unavailable");
@@ -137,27 +148,31 @@ export async function initializeBilling() {
   return init;
 }
 export async function processWhopWebhook(payload: Buffer, headers: Record<string, string>) {
+  if (!billingRuntimeEnabled()) throw new Error("billing_runtime_disabled");
   await initializeBilling();
   if (!webhookKey || !Buffer.isBuffer(payload)) throw new Error("webhook_unavailable");
+  const { processVerifiedWhopWebhook } = await import("./whop-webhook");
   await processVerifiedWhopWebhook(payload, headers, webhookKey, reconcilePayments);
 }
 export async function reconcilePayments() {
-  if (!ready || reconciling || egressStopped()) return;
+  if (!billingRuntimeEnabled() || !ready || reconciling || egressStopped()) return;
   reconciling = true;
   try {
     const company = whopCompanyId();
     if (!company) throw new Error("whop_company_missing");
+    const pool = await loadBillingPool();
+    const { reconcileWhopPayments } = await import("./whop-reconciliation");
     await reconcileWhopPayments({
       pool,
       company,
-      getClient: getWhopClient,
-      sendPaymentConfirmations,
+      getClient: createWhopClient,
+      sendPaymentConfirmations: () => sendPaymentConfirmations(pool),
     });
   } catch {
     logger.warn({ code: "whop_reconciliation_failed" }, "Whop reconciliation will retry");
   } finally { reconciling = false; }
 }
-async function sendPaymentConfirmations() {
+async function sendPaymentConfirmations(pool: Awaited<ReturnType<typeof loadBillingPool>>) {
   if (!process.env.TELEGRAM_BOT_TOKEN) return;
   const { rows } = await pool.query(`UPDATE public.ah_sheli_payment_grants SET notification_status='unknown'
     WHERE invoice_id IN (SELECT invoice_id FROM public.ah_sheli_payment_grants

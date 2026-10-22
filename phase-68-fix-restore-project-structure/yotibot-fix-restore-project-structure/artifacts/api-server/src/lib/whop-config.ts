@@ -3,6 +3,10 @@ export type WhopMode = "sandbox" | "live";
 const SANDBOX_API_BASE_URL = "https://sandbox-api.whop.com/api/v1";
 const LIVE_API_BASE_URL = "https://api.whop.com/api/v1";
 
+export function billingRuntimeEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.DEPLOYMENT_ENV !== "staging" && env.DATA_ENVIRONMENT !== "staging";
+}
+
 export function whopMode(env: NodeJS.ProcessEnv = process.env): WhopMode {
   // Development/Staging must never be redirected to the live Whop API.
   if (env.DEPLOYMENT_ENV === "staging" || env.NODE_ENV !== "production") return "sandbox";

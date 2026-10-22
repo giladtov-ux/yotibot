@@ -51,3 +51,19 @@ test('development and invalid public URL never schedule keep-alive traffic', () 
   startSelfKeepAlive({ logger, production: false, schedule })();
   startSelfKeepAlive({ logger, production: true, publicUrl: 'http://example.test/', schedule })();
 });
+
+test('Staging never schedules self-keep-alive traffic even with a public URL', () => {
+  let schedules = 0, requests = 0;
+  const stop = startSelfKeepAlive({
+    logger,
+    production: true,
+    deploymentEnvironment: 'staging',
+    dataEnvironment: 'staging',
+    publicUrl: 'https://staging.example.invalid',
+    schedule: () => { schedules++; throw new Error('Staging must not schedule outbound traffic'); },
+    request: async () => { requests++; throw new Error('Staging must not make outbound requests'); },
+  });
+  stop();
+  assert.equal(schedules, 0);
+  assert.equal(requests, 0);
+});

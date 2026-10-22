@@ -232,3 +232,17 @@ mtime_ms = 1792684347696
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aa92bd01-385d-4484-80d2-b8a32576dccf/12f6d442-3b07-4f25-9530-8b81e1d65c0b/61ce5a6f-e43a-4ceb-92eb-a64344a6154c"
 storage_version_token = "1792684568262422"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "ETGM2_7MPfvwBvhYlbhrp"
+uri = "file://phase-68-fix-restore-project-structure/yotibot-fix-restore-project-structure/docs/phase-118-staging-guards.md"
+type = "text"
+title = "Phase 118 — Staging Guards Report"
+description = "Code changes, isolated test evidence, candidate identity, unverified items, and remaining risks for the Staging fail-closed fixes."
+logical_id = "1a3a1bbd-9340-4ac1-92c2-62646e37edea"
+content_hash = "sha256:6676a0a0e300b3a324427ed1003b46419eb7a6ea0421d56f7e6855838ef27490"
+size = 8790
+mtime_ms = 1792685565667
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aa92bd01-385d-4484-80d2-b8a32576dccf/1a3a1bbd-9340-4ac1-92c2-62646e37edea/3f14d2da-a254-4d2d-befe-20bfa4e22848"
+storage_version_token = "1792685622349732"
+content_type = "text/markdown"

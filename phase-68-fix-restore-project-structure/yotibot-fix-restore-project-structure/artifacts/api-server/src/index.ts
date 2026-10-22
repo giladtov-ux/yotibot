@@ -8,6 +8,7 @@ import { logger } from "./lib/logger";
 import { BOT_INTERNAL_PORT } from "./lib/telegram.functions";
 import { createWorkerRestartDelay } from "./lib/worker-restart";
 import { initializeBilling, stopBillingRuntime } from "./lib/billing-runtime";
+import { billingRuntimeEnabled } from "./lib/whop-config";
 import { startSelfKeepAlive } from "./lib/self-keep-alive";
 import { isDevelopmentTelegramWebhook, shouldStartTelegramWorker } from "./lib/telegram-staging";
 
@@ -133,7 +134,9 @@ apiServer = app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
-  void initializeBilling().catch(() => logger.warn({ code: "billing_not_ready" }, "Billing unavailable; existing bot remains running"));
+  if (billingRuntimeEnabled(process.env)) {
+    void initializeBilling().catch(() => logger.warn({ code: "billing_not_ready" }, "Billing unavailable; existing bot remains running"));
+  }
   if (process.env.NODE_ENV === "production") stopSelfKeepAlive = startSelfKeepAlive({ logger });
   if (shouldStartTelegramWorker(process.env)) startTelegramWorker();
 });
