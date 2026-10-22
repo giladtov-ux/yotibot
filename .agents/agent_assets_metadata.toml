@@ -84,3 +84,17 @@ mtime_ms = 1792650814257
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aa92bd01-385d-4484-80d2-b8a32576dccf/e89b0580-2cb5-44c9-ab27-7583ca8ea842/927c0996-544c-481e-9f8c-bb610e09c6f6"
 storage_version_token = "1792650838596429"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "OzRVMw_Qd-C0p_jbdefSg"
+uri = "file://phase-68-fix-restore-project-structure/yotibot-fix-restore-project-structure/docs/phase-106-render-deployment-diagnosis.md"
+type = "text"
+title = "Phase 106 — Render Deployment Diagnosis"
+description = "Read-only findings on the Render placeholder response, expected app routes/startup, local Git/build baseline, outstanding provider evidence, and minimum remediation."
+logical_id = "f59fd4ed-3a7b-4f4a-9350-549d33dc281b"
+content_hash = "sha256:036cfa4c5661d25a8fbd422d2a7681e32f0922f182bcfdec0eb7a41c08128788"
+size = 14788
+mtime_ms = 1792651804533
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aa92bd01-385d-4484-80d2-b8a32576dccf/f59fd4ed-3a7b-4f4a-9350-549d33dc281b/dc80b16d-4b0a-4702-9c6d-e7274b043086"
+storage_version_token = "1792651820842702"
+content_type = "text/markdown"
