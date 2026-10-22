@@ -190,3 +190,17 @@ mtime_ms = 1792661145283
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aa92bd01-385d-4484-80d2-b8a32576dccf/322611c8-2045-4caa-b70c-fd6c30739909/0e37f9c8-488d-4db2-8fb3-cf4092084a8c"
 storage_version_token = "1792661188819972"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "qMVANiL4Gifi5vsP6XieO"
+uri = "file://phase-68-fix-restore-project-structure/yotibot-fix-restore-project-structure/docs/phase-114-rollback-and-recovery-plan.md"
+type = "text"
+title = "Phase 114 Rollback & Recovery Plan"
+description = "Proposed RPO/RTO targets, rollback and isolated restore runbooks, fallback commit assessment, and local dry-run evidence."
+logical_id = "a1dfd3de-d185-424c-9a1d-b0bf4e06cf7d"
+content_hash = "sha256:174d510486d14f696dd15a65ad4317e3600b98f7521e5cbc276aaa50abee21b3"
+size = 12647
+mtime_ms = 1792661487551
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aa92bd01-385d-4484-80d2-b8a32576dccf/a1dfd3de-d185-424c-9a1d-b0bf4e06cf7d/3553881f-f195-4dba-a7c9-bcccdb8b4b20"
+storage_version_token = "1792661563888595"
+content_type = "text/markdown"
