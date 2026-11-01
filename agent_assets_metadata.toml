@@ -1,0 +1,123 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "CjVluKoEa6s7wSAywD0bg"
+uri = "file://attached_assets/ah-sheli-profile-green-black.jpg"
+type = "image"
+title = "אח שלי — תמונת הפרופיל הירוקה־שחורה"
+description = "הסמל העגול שחולץ מהתמונה שצירפת והוגדר כתמונת הפרופיל של הבוט בטלגרם."
+logical_id = "f31520f7-e8a2-4480-8295-813e3208a7cc"
+content_hash = "sha256:fee6a79bcd8c933a90a590d0982d9a3c40463ae6cf925fce28aec642d59d18c1"
+size = 59856
+mtime_ms = 1791652951281
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:11c74320-1dba-4b45-9a35-91b41a1a02b8/f31520f7-e8a2-4480-8295-813e3208a7cc/418c9047-eb87-4b4f-80ce-50aa2a2f6e2b"
+storage_version_token = "1791653008464292"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "XeHQAUUToZ8B_BewRGC9z"
+uri = "file://attached_assets/ah-sheli-profile-yellow-black.jpg"
+type = "image"
+title = "אח שלי — האייקון הצהוב־שחור"
+description = "רקע צהוב, כיתוב ובועות דיבור בשחור. הוגדר כתמונת הפרופיל של הבוט בטלגרם."
+logical_id = "ff61a03b-12ee-4284-8a02-ac7e78a62952"
+content_hash = "sha256:e72f243ec3cb0bc43996819d9a0a06d73b7e752b0b92dddb0c9a71ec35d6f8bd"
+size = 101521
+mtime_ms = 1791653468952
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:11c74320-1dba-4b45-9a35-91b41a1a02b8/ff61a03b-12ee-4284-8a02-ac7e78a62952/322364d4-f456-42c4-8583-82b31c017d4e"
+storage_version_token = "1791653586865553"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "xbGmsJDb70xh8OPzaMynB"
+uri = "file://.local/reports/legacy-test-diagnosis.html"
+type = "html"
+title = "72 legacy test failures — grouped diagnosis"
+description = "All 72 full test names, exact complete TAP errors and stack traces, grouped into 11 root-cause categories. Expand each test to inspect its full diagnostic. No code changes."
+logical_id = "49196fc4-d6b7-447f-99f4-d7be9e3396eb"
+content_type = "text/html"
+
+[[outputs]]
+id = "nfgojbHdRT-sjgyfflAsP"
+uri = "file://.local/reports/priority-1-2-results.html"
+type = "html"
+title = "Priority 1 & 2 — results and remaining failures"
+description = "Targeted fixes, verification counts, five resolved test failures, and complete errors for the remaining 67. Priority 3 not started."
+logical_id = "421d0c61-823c-4cc4-b4cb-9a85f578cb08"
+content_hash = "sha256:04b80b1f85052b1ed2bd3099dd1e95539564e1150200fb9c1dee22bf3cdf2351"
+size = 281661
+mtime_ms = 1792253779481
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:11c74320-1dba-4b45-9a35-91b41a1a02b8/421d0c61-823c-4cc4-b4cb-9a85f578cb08/c03d5799-d935-4948-9168-9c2095ac060f"
+storage_version_token = "1792253781306074"
+content_type = "text/html"
+
+[[outputs]]
+id = "UHKl2l5Gt5l0rvAkzqIf9"
+uri = "file://.local/reports/priority-3-keyboard-diagnosis.html"
+type = "html"
+title = "Priority 3 — keyboard diagnosis, no code changes"
+description = "48 action/menu-related failures with full names, exact errors, stack traces and classifications. Recommends one test-only legacy-callback repair group; approval required."
+logical_id = "b3c7528c-cbaa-4053-aa66-6569cabc2342"
+content_hash = "sha256:05e0657189dcb95f9ea9517ce65c5cc3b38a42dd7fbed4ebad0e50a52ebafc5a"
+size = 106523
+mtime_ms = 1792254407693
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:11c74320-1dba-4b45-9a35-91b41a1a02b8/b3c7528c-cbaa-4053-aa66-6569cabc2342/78f787a5-5529-4965-89ad-007826a1cdcb"
+storage_version_token = "1792254409757044"
+content_type = "text/html"
+
+[[outputs]]
+id = "nAk9WE3kp8u0b-zKPqqk5"
+uri = "file://.local/reports/priority-3-first-group-results.html"
+type = "html"
+title = "Priority 3 — first group results"
+description = "One test-file repair: 23 failures resolved, 24 target and 151 related tests passing. Full suite: 692 passed, 44 failed. Includes complete remaining diagnostics."
+logical_id = "569526f4-1fff-4949-8115-ed163ad94ee6"
+content_hash = "sha256:4d8064fcc4f9514c3059bc8fea49400eaee244eab986842ea1f1a25ddba0743d"
+size = 261266
+mtime_ms = 1792254932549
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:11c74320-1dba-4b45-9a35-91b41a1a02b8/569526f4-1fff-4949-8115-ed163ad94ee6/1a10224d-4e74-4150-8b73-3d47c6adda48"
+storage_version_token = "1792254934291681"
+content_type = "text/html"
+
+[[outputs]]
+id = "sV0SnCUb9ZTzN-mfiNRwS"
+uri = "file://.local/reports/ah-sheli-dr-2026-10-18.html"
+type = "html"
+title = "דוח תרגיל Backup & Disaster Recovery — Dev"
+description = "תוצאות בפועל: השוואת 16 טבלאות, זמני גיבוי ושחזור, בדיקות תזכורות וקפה, ביטול שחזור שנכשל וממצא הכפילות בשחזור גיבוי ישן."
+logical_id = "a9e26e80-4b48-4cf5-9cca-04e16fd06b69"
+content_hash = "sha256:65474967d35d4e1cc52b190f52b0f9f1004c5aa2e5b76b4e24ef422d8113c3ed"
+size = 27098
+mtime_ms = 1792325908554
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:11c74320-1dba-4b45-9a35-91b41a1a02b8/a9e26e80-4b48-4cf5-9cca-04e16fd06b69/3d512fa6-aa90-4f5e-a036-c25d1c146688"
+storage_version_token = "1792325973178963"
+content_type = "text/html"
+
+[[outputs]]
+id = "q47PvNsojJuGA8epy9pKU"
+uri = "file://.local/reports/ah-sheli-acceptance-2026-10-18.html"
+type = "html"
+title = "דוח קבלה מלא — אח שלי, Dev בלבד"
+description = "24 תרחישי קבלה עם סטטוס וראיות, תוצאות 933 בדיקות, הכשל המלא בבדיקת SQL, תשעת ה־TODO ותנאים מוצעים לבטא."
+logical_id = "b4ca154f-abc9-4744-be8a-0dc138318780"
+content_hash = "sha256:456cddad1261f1e1aa1589e3697322ea605b6a3c3c44a7d6370d8b3bee356871"
+size = 28401
+mtime_ms = 1792328273363
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:11c74320-1dba-4b45-9a35-91b41a1a02b8/b4ca154f-abc9-4744-be8a-0dc138318780/2ea4ea86-64f5-4674-ba15-b2f84621b13f"
+storage_version_token = "1792328275121882"
+content_type = "text/html"
+
+[[outputs]]
+id = "Dvc_8WiwYWPE7AAKFim4d"
+uri = "file://attached_assets/ah-sheli-sanitized-source.zip"
+type = "unspecified"
+title = "Ah Sheli — Sanitized Source Archive"
+description = "ZIP containing 62 sanitized source files and SHA256SUMS.txt. File contents and stored read-only permissions verified; no production files or configurations changed."
+logical_id = "140eba1d-aa40-422d-a34a-a4dccafcacc0"
+content_hash = "sha256:b7c6d06020a5b35b39c5da2c02bb67c72c40ab2a7951d5f48c1d8b3a594b7dc0"
+size = 136459
+mtime_ms = 1792497869166
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:11c74320-1dba-4b45-9a35-91b41a1a02b8/140eba1d-aa40-422d-a34a-a4dccafcacc0/0a699b79-848c-4439-b9d9-3569af9401cb"
+storage_version_token = "1792497879565366"
+content_type = "application/octet-stream"

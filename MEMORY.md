@@ -1,0 +1,36 @@
+- [Ah Sheli assistant scope](ah-sheli-scope.md) — validate saved actions in code; keep human replies and the fixed routine as context, not reminders.
+- [Telegram membership policy](telegram-user-access.md) — website-first signup, 30-day paid access, owner-only administration and private user context.
+- [Access notification policy](access-notification-policy.md) — membership succeeds independently of delivery; uncertain access messages never replay automatically.
+- [API preview routing](api-preview-routing.md) — keep the private bot port distinct from artifact ports; an upstream Vite 404 is not an Express routing failure.
+- [Public homepage scope](public-homepage-scope.md) — official yellow/black logo and yellow accents; preserve layout; marketing alone does not grant access.
+- [Production bot transition](bot-production-transition.md) — preserve verified ownership and stop the development worker before activating production against a separate database.
+- [Workspace package scope](workspace-package-scope.md) — generic removal can miss leaf manifests; verify both the intended package and the lockfile.
+- [AI responsiveness](ai-responsiveness.md) — keep whole schedules and clarification context while bounding output and retries; measure AI separately from database and Telegram.
+- [Google OAuth retries](calendar-oauth-retries.md) — SQL rollback cannot restore a consumed Google authorization code; distinguish expiration from provider and persistence failures.
+- [Bot worker reliability](bot-worker-reliability.md) — reload after lock loss; uncertain Telegram outcomes require owner verification, not automatic replay.
+- [Bot routing authority](bot-routing-authority.md) — named operations, SQL-grounded discovery without data resets, and retained clarification without historical action replay.
+- [Weekly schedule semantics](weekly-schedule-semantics.md) — preserve original schedules without guessed times; recur by Israel calendar days and display clean updated lists.
+- [Chat reply format](daily-summary-format.md) — LLM-first text/voice, no generic default replies; SQL-grounded status, compact morning and combined tomorrow agendas.
+- [Telegram native colors](telegram-native-colors.md) — yellow #FFD000 for app-owned controls; Telegram's native chat menu background remains client-owned.
+- [Browser engine availability](browser-engine-availability.md) — a downloaded WebKit binary may lack host libraries; Chromium passing is not Safari validation.
+- [Browser accessibility validation](browser-accessibility-validation.md) — real keyboard and accessible-name checks do not establish audible NVDA or VoiceOver announcements.
+- [Reminder buttons](reminder-button-semantics.md) — owner-bound actions; completion affects one occurrence, deletion cancels its series with disclosure; retain receipts on reload.
+- [Voice input verification](voice-input-verification.md) — OpenRouter-only Whisper; distinguish balance failures from parsing loops; mock/silence probes do not establish Hebrew accuracy.
+- [Stripe connection diagnostics](stripe-connection-diagnostics.md) — valid connectors can mismatch legacy templates; separate payment, delivery and private Telegram identity proof.
+- [Payment provider policy](payment-provider-policy.md) — use Whop exclusively; never request Stripe keys or restore it as a fallback.
+- [Whop API contracts](whop-api-contract.md) — dated SDK responses differ from legacy management helpers; verify shapes and money units before upgrades.
+- [Mini App integration](mini-app-integration.md) — additive secured interface; bot state has one writer, calendar consent is per user, and Israel scheduling stays unchanged.
+- [Telegram-only scope](telegram-only-scope.md) — WhatsApp is cancelled; preserve Telegram data, design, reminders and existing subscription terms.
+- [Targeted change control](change-control.md) — preserve working behavior; isolate test storage before transitive imports and distinguish source checks from live activation.
+- [SQL schema preservation](schema-preservation.md) — never approve destructive drift; align both ORM and actual development structure with production before regenerating Publish.
+- [JSONB query scope](jsonb-query-scope.md) — qualify outer state JSON in nested projections; default value columns can silently shadow it.
+- [External cloud transition](cloud-transition.md) — approved Render target; coordinate cutover and preserve production data, ownership and secrets.
+- [Git provider authorization](git-provider-authorization.md) — connected/healthy status does not prove CLI write access; verify the remote branch before reporting an upload.
+- [Relative timers](relative-timers.md) — retain absolute elapsed-time deadlines through reload; wall-clock formatting must not shorten or reinterpret the duration.
+- [Current-only state](current-only-state.md) — preserve unanswered delivered one-offs until the user resolves or manually deletes them.
+- [Reminder check-ins](reminder-checkins.md) — one-off gets one done/delete prompt at deadline +5 minutes; unanswered reminders persist, recurring reminders stay quiet.
+- [Native tool conversation](native-tool-conversation.md) — user-authorized ordinary-chat refactor; model-written final replies, no Confirm State, preserved data safeguards.
+- [Time-aware priority scope](time-aware-priority-scope.md) — recommendations only; no invented availability, automatic scheduling or unapproved production activation.
+- [Isolated test environments](isolated-test-environment.md) — bot allowlists differ from full-suite inputs; use disposable signing keys and temporary SQL fixtures.
+- [Disaster recovery safety](disaster-recovery-safety.md) — older backups lose newer delivery fences; quarantine restored workers and isolate destructive drills from application credentials.
+- [Shopping icon reference](shopping-icon-policy.md) — follow the supplied icon associations rather than silently substituting conventional product meanings.
