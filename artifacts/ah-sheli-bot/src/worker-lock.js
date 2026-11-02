@@ -7,10 +7,9 @@ export async function createWorkerLock(client) {
     active: false,
     async release() {
       return true;
+    },
+    async check() {
+      return true;
     }
   };
-}
-
-export async function check() {
-  return true;
 }
