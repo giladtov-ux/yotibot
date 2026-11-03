@@ -275,7 +275,13 @@ async function handleUpdate(update) {
 if (!message.text && !message.voice && !message.photo) return;
 
   const chatId = String(message.chat.id);
- const commandText = message.text ? String(message.text) : (message.photo ? "image" : "");
+let imageContent = "";
+if (message.photo) {
+  const photo = message.photo[message.photo.length - 1];
+  const file = await telegram.getFile(photo.file_id);
+  imageContent = `https://api.telegram.org/file/bot${process.env.TELEGRAM_BOT_TOKEN}/${file.file_path}`;
+}
+const commandText = message.text ? String(message.text) : imageContent;
   if (/^\/connect(?:@[a-z0-9_]+)?(?:\s|$)/iu.test(commandText.trim())) {
     const result = await ownerConnections.connect(message);
     if (result.status === "connected") {
