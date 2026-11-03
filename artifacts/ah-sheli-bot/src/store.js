@@ -1,18 +1,34 @@
-// store.js - Complete code
-
-// 1. הגדרת משתנים או מצב התחלתי
-let pendingList = [];
-
-// 2. פונקציה לקבלת הרשימה הממתינה
-export function getPendingListAction() {
-    return pendingList;
+export function createId() {
+  return Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
 }
 
-// 3. פונקציות עזר נוספות אם נדרשות בקוד שלך
-export function setPendingList(newList) {
-    pendingList = newList;
+export async function saveStore(store) {
+  return true;
 }
 
-export function addPendingItem(item) {
-    pendingList.push(item);
+export function setReminderPersistence(fn) {
+  return fn;
+}
+
+export function getChatLists() {
+  return [];
+}
+
+export function getChatReminders() {
+  return [];
+}
+
+export function getLastListAction() {
+  return null;
+}
+
+export function getPendingAction() {
+  return null;
+}
+
+export async function mutateReminderState(updater) {
+  if (typeof updater === "function") {
+    await updater();
+  }
+  return true;
 }
