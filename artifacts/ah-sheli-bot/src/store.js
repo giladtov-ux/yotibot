@@ -6,8 +6,16 @@ export async function saveStore(store) {
   return true;
 }
 
+export async function loadStore() {
+  return {};
+}
+
 export function setReminderPersistence(fn) {
   return fn;
+}
+
+export function initializeStatePersistence() {
+  return true;
 }
 
 export function getChatLists() {
