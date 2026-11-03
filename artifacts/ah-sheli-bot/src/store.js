@@ -18,6 +18,11 @@ export function getChatLists() {
   return [];
 }
 
+// קבלת תזכורות לפי צ'אט
+export function getChatReminders() {
+  return [];
+}
+
 // עדכון אטומי של מצב התזכורות
 export async function mutateReminderState(updater) {
   if (typeof updater === "function") {
