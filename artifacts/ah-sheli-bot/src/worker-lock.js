@@ -16,3 +16,7 @@ export async function createWorkerLock(client) {
     }
   };
 }
+
+export async function check() {
+  return true;
+}
