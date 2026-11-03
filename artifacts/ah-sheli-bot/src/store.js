@@ -23,6 +23,11 @@ export function getChatReminders() {
   return [];
 }
 
+// קבלת פעולת הרשימה האחרונה
+export function getLastListAction() {
+  return null;
+}
+
 // עדכון אטומי של מצב התזכורות
 export async function mutateReminderState(updater) {
   if (typeof updater === "function") {
