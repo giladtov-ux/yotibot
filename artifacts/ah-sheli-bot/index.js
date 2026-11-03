@@ -277,8 +277,7 @@ if (!message.text && !message.voice && !message.photo) return;
   const chatId = String(message.chat.id);
 let imageContent = "";
 if (message.photo) {
-  const photo = message.photo[message.photo.length - 1];
-  const file = await telegram.getFile(photo.file_id);
+const file = await telegram.call('getFile', { file_id: photo.file_id });
   imageContent = `https://api.telegram.org/file/bot${process.env.TELEGRAM_BOT_TOKEN}/${file.file_path}`;
 }
 const commandText = message.text ? String(message.text) : imageContent;
