@@ -275,7 +275,7 @@ async function handleUpdate(update) {
 if (!message.text && !message.voice && !message.photo) return;
 
   const chatId = String(message.chat.id);
-  const commandText = message.text ?? "";
+ const commandText = message.text ? String(message.text) : (message.photo ? "image" : "");
   if (/^\/connect(?:@[a-z0-9_]+)?(?:\s|$)/iu.test(commandText.trim())) {
     const result = await ownerConnections.connect(message);
     if (result.status === "connected") {
