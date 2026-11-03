@@ -1,13 +1,21 @@
+let memoryStore = {
+  reminders: [],
+  lists: {}
+};
+
 export function createId() {
   return Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
 }
 
 export async function saveStore(store) {
+  if (store) {
+    memoryStore = JSON.parse(JSON.stringify(store));
+  }
   return true;
 }
 
 export async function loadStore() {
-  return { reminders: [], lists: {} };
+  return memoryStore;
 }
 
 export function setReminderPersistence(fn) {
@@ -19,11 +27,11 @@ export function initializeStatePersistence() {
 }
 
 export function getChatLists() {
-  return [];
+  return memoryStore.lists || {};
 }
 
 export function getChatReminders() {
-  return [];
+  return memoryStore.reminders || [];
 }
 
 export function getLastListAction() {
@@ -60,14 +68,14 @@ export function setUnknownCommitHandler(fn) {
 
 export async function mutateReminderState(updater) {
   if (typeof updater === "function") {
-    await updater();
+    await updater(memoryStore.reminders);
   }
   return true;
 }
 
 export async function mutateList(updater) {
   if (typeof updater === "function") {
-    await updater();
+    await updater(memoryStore.lists);
   }
   return true;
 }
