@@ -54,6 +54,10 @@ export function setReminderCommitHandler(fn) {
   return fn;
 }
 
+export function setUnknownCommitHandler(fn) {
+  return fn;
+}
+
 export async function mutateReminderState(updater) {
   if (typeof updater === "function") {
     await updater();
