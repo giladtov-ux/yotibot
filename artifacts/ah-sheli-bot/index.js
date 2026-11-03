@@ -272,15 +272,16 @@ async function handleUpdate(update) {
     return handleAuthorizedUpdate(store, telegram, update, { userAccess, reminderOperation, assertActive });
   }
   const message = update.message;
-if (!message.text && !message.voice && !message.photo) return;
+  if (!message.text && !message.voice && !message.photo) return;
 
   const chatId = String(message.chat.id);
-let imageContent = "";
-if (message.photo) {
-const file = await telegram.call('getFile', { file_id: photo.file_id });
-  imageContent = `https://api.telegram.org/file/bot${process.env.TELEGRAM_BOT_TOKEN}/${file.file_path}`;
-}
-const commandText = message.text ? String(message.text) : imageContent;
+  let imageContent = "";
+  if (message.photo && message.photo.length > 0) {
+    const photo = message.photo[message.photo.length - 1];
+    const file = await telegram.call('getFile', { file_id: photo.file_id });
+    imageContent = `https://api.telegram.org/file/bot${process.env.TELEGRAM_BOT_TOKEN}/${file.file_path}`;
+  }
+  const commandText = message.text ? String(message.text) : imageContent;
   if (/^\/connect(?:@[a-z0-9_]+)?(?:\s|$)/iu.test(commandText.trim())) {
     const result = await ownerConnections.connect(message);
     if (result.status === "connected") {
