@@ -38,6 +38,14 @@ export function setPendingListAction(action) {
   return action;
 }
 
+export function assertStatePersistenceActive() {
+  return true;
+}
+
+export function setReminderCommitHandler(fn) {
+  return fn;
+}
+
 export async function mutateReminderState(updater) {
   if (typeof updater === "function") {
     await updater();
