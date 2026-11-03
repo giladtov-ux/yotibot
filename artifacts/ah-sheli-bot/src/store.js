@@ -8,6 +8,11 @@ export async function saveStore(store) {
   return true;
 }
 
+// הגדרת מנגנון שמירת תזכורות
+export function setReminderPersistence(fn) {
+  return fn;
+}
+
 // עדכון אטומי של מצב התזכורות
 export async function mutateReminderState(updater) {
   if (typeof updater === "function") {
