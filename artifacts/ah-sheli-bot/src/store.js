@@ -36,3 +36,10 @@ export async function mutateReminderState(updater) {
   }
   return true;
 }
+
+export async function mutateList(updater) {
+  if (typeof updater === "function") {
+    await updater();
+  }
+  return true;
+}
