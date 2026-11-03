@@ -1,42 +1,18 @@
-// פונקציית עזר ליצירת מזהה ייחודי
-export function createId() {
-  return Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
+// store.js - Complete code
+
+// 1. הגדרת משתנים או מצב התחלתי
+let pendingList = [];
+
+// 2. פונקציה לקבלת הרשימה הממתינה
+export function getPendingListAction() {
+    return pendingList;
 }
 
-// שמירת הסטור
-export async function saveStore(store) {
-  return true;
+// 3. פונקציות עזר נוספות אם נדרשות בקוד שלך
+export function setPendingList(newList) {
+    pendingList = newList;
 }
 
-// הגדרת מנגנון שמירת תזכורות
-export function setReminderPersistence(fn) {
-  return fn;
-}
-
-// קבלת רשימות צ'אטים
-export function getChatLists() {
-  return [];
-}
-
-// קבלת תזכורות לפי צ'אט
-export function getChatReminders() {
-  return [];
-}
-
-// קבלת פעולת הרשימה האחרונה
-export function getLastListAction() {
-  return null;
-}
-
-// קבלת פעולה ממתינה
-export function getPendingAction() {
-  return null;
-}
-
-// עדכון אטומי של מצב התזכורות
-export async function mutateReminderState(updater) {
-  if (typeof updater === "function") {
-    await updater();
-  }
-  return true;
+export function addPendingItem(item) {
+    pendingList.push(item);
 }
