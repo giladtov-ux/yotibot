@@ -28,6 +28,11 @@ export function getLastListAction() {
   return null;
 }
 
+// קבלת פעולה ממתינה
+export function getPendingAction() {
+  return null;
+}
+
 // עדכון אטומי של מצב התזכורות
 export async function mutateReminderState(updater) {
   if (typeof updater === "function") {
