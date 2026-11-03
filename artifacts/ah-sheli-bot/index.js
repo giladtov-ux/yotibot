@@ -272,7 +272,7 @@ async function handleUpdate(update) {
     return handleAuthorizedUpdate(store, telegram, update, { userAccess, reminderOperation, assertActive });
   }
   const message = update.message;
-  if ((!message?.text && !message?.voice) || message.from?.is_bot) return;
+if (!message.text && !message.voice && !message.photo) return;
 
   const chatId = String(message.chat.id);
   const commandText = message.text ?? "";
