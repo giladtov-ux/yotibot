@@ -26,6 +26,10 @@ export function getPendingAction() {
   return null;
 }
 
+export function getPendingListAction() {
+  return null;
+}
+
 export async function mutateReminderState(updater) {
   if (typeof updater === "function") {
     await updater();
