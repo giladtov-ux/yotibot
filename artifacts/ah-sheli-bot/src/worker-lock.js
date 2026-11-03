@@ -4,9 +4,9 @@ export const LOCK_QUERY_TIMEOUT_MS = 9800;
 
 export async function createWorkerLock(client) {
   return {
-    active: false,
+    active: true,
     isActive() {
-      return false;
+      return true;
     },
     async release() {
       return true;
