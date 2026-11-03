@@ -7,7 +7,7 @@ export async function saveStore(store) {
 }
 
 export async function loadStore() {
-  return {};
+  return { reminders: [], lists: {} };
 }
 
 export function setReminderPersistence(fn) {
