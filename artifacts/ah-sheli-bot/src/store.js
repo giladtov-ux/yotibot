@@ -26,6 +26,10 @@ export function getPendingAction() {
   return null;
 }
 
+export function setPendingAction(action) {
+  return action;
+}
+
 export function getPendingListAction() {
   return null;
 }
