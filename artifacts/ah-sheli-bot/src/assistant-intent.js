@@ -110,7 +110,7 @@ response, name, listName, items, text, date, hour, minute, itemText, description
 - תזכורת, פגישה או אירוע אישי חדש: reminder, גם בלי בקשה מפורשת להתראה. אל תיצור תזכורות חדשות מתוך לו"ז קבוע שכבר שמור ברקע.
 - סידור עבודה או לו"ז אישי שהמשתמש שולח: schedule-reminders עם כל האירועים והזמנים ב-reminders, ללא צורך בבקשת תזכורת מפורשת לכל אירוע.
 - שאלות על הרשומות השמורות: השתמש ב-list-lists או list-reminders כשאפשר להציג רשימה קיימת. בשאלה ממוקדת על תוכן או מועד, אפשר לענות מתוך המידע שנמסר בלבד.
-- בקשת ביטול של תזכורת פעילה: cancel-reminder עם description, או cancel-reminder-number עם position.
+- בקשת ביטול של תזכורת פעילה: cancel-reminder עם description, או cancel-reminder-number със position.
 - תשובה כללית: טקסט חופשי. אם חסר פרט מהותי לפעולה, clarify או reminder חסר פרטים.
 - לעולם אל תטען שבוצעה שמירה או נשלחה תזכורת לפני שהפעולה בוצעה על ידי התוכנה.
 - תן תשובות ענייניות וטבעיות; לשאלה כללית אפשר לענות בצורה מלאה, אך אל תציג מידע בזמן אמת כאילו בדקת אותו.
@@ -150,20 +150,20 @@ function validDate(value) {
 
 export function normalizeScheduledReminders(value) {
   if (!Array.isArray(value) || value.length === 0 || value.length > 100) {
-    throw new Error("AI returned an invalid schedule.");
+    return [];
   }
   const todayStr = new Date().toISOString().split("T")[0];
   return value.map(item => {
     if (!item || typeof item !== "object" || Array.isArray(item)) {
-      throw new Error("AI returned an invalid schedule entry.");
+      return null;
     }
     return {
-      text: optionalString(item.text, "schedule text", 300),
+      text: optionalString(item.text, "schedule text", 300) || "תזכורת",
       date: item.date ? validDate(item.date) : todayStr,
-      hour: optionalInteger(item.hour, "schedule hour", 0, 23),
-      minute: optionalInteger(item.minute, "schedule minute", 0, 59),
+      hour: optionalInteger(item.hour, "schedule hour", 0, 23) ?? 8,
+      minute: optionalInteger(item.minute, "schedule minute", 0, 59) ?? 0,
     };
-  });
+  }).filter(Boolean);
 }
 
 export function normalizeIntent(value) {
