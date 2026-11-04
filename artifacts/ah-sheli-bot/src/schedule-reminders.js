@@ -20,7 +20,10 @@ export async function scheduleDailyReminders(store, chatId, rawEntries, now = Da
   });
   if (missing.length) {
     if (sourceText) {
-      await mutateReminderState(store, candidate => appendScheduleSource(candidate, chatId, sourceText));
+      await mutateReminderState(store, candidate => {
+        if (!candidate.reminders) candidate.reminders = [];
+        appendScheduleSource(candidate, chatId, sourceText);
+      });
       return "שמרתי את הלו״ז כמו ששלחת, בלי לקבוע יום או שעה שלא ציינת.";
     }
     return [
@@ -57,6 +60,7 @@ export async function scheduleDailyReminders(store, chatId, rawEntries, now = Da
   const targetDates = [...new Set(planned.map(p => new Date(p.dueAt).toISOString().split("T")[0]))];
 
   await mutateReminderState(store, candidate => {
+    if (!candidate.reminders) candidate.reminders = [];
     candidate.reminders = candidate.reminders.filter(item => {
       if (item.chatId !== chatId) return true;
       const itemDate = new Date(item.dueAt).toISOString().split("T")[0];
@@ -71,6 +75,7 @@ export async function scheduleDailyReminders(store, chatId, rawEntries, now = Da
 
   if (fresh.length || sourceText) {
     await mutateReminderState(store, candidate => {
+      if (!candidate.reminders) candidate.reminders = [];
       candidate.reminders.push(...fresh);
       appendScheduleSource(candidate, chatId, sourceText);
     });
