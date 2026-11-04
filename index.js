@@ -28,7 +28,3 @@ if (existsSync(targetPath)) {
     process.exit(code ?? 0);
   });
 }
-
-module.exports = { startSystem };
-
-
