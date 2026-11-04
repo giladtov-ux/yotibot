@@ -231,12 +231,13 @@ async function handleNaturalIntent(store, chatId, intent) {
     case "schedule-reminders":
       await mutateReminderState(store, candidate => {
         const todayStr = new Date().toISOString().split("T")[0];
-        candidate.reminders = candidate.reminders.filter(r => {
+        const existingReminders = candidate.reminders || [];
+        candidate.reminders = existingReminders.filter(r => {
           const rDate = new Date(r.dueAt).toISOString().split("T")[0];
           return rDate !== todayStr;
         });
       });
-      return scheduleDailyReminders(store, chatId, intent.reminders, Date.now(), intent.intervalMinutes, intent.sourceText);
+      return scheduleDailyReminders(store, chatId, intent.reminders || [], Date.now(), intent.intervalMinutes, intent.sourceText);
     default:
       return null;
   }
