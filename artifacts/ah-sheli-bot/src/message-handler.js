@@ -220,4 +220,94 @@ async function processOwnerMessage(store, telegram, chatId, text, {
     if (shortAddition) {
       response = addedItems ? "נוסף לרשימה"
         : JSON.stringify(receipt.before) !== JSON.stringify(receipt.after)
-          ? "הרשימה עוד
+          ? "הרשימה עודכנה" : "כבר קיים ברשימה";
+    }
+    if (!telegramDaily) response = await recordOperation(async () => {
+      await assertPermission();
+      assertActive();
+      return rememberListConfirmation(store, chatId, text, response);
+    });
+    timings.assistantMs = Math.round(performance.now() - mark);
+    phase = "save";
+    mark = performance.now();
+    assertActive();
+    await saveConversation(chatId, text, response);
+    timings.saveMs = Math.round(performance.now() - mark);
+    phase = "telegram";
+    mark = performance.now();
+    assertActive();
+    const displayStore = receipt?.after ? {
+      ...store, lists: { ...store.lists, [chatId]: { ...store.lists[chatId], [receipt.listName]: receipt.after } },
+    } : store;
+    let directDetails = null;
+    if (telegramResponseStyle && !telegramDaily && !isSummaryRequest(text)) {
+      const freshReminder = store.reminders.find(item => item.chatId === chatId
+        && item.trackingTaskId && (!previousReminders.has(item.id)
+          || previousReminders.get(item.id).dueAt !== item.dueAt
+          || previousReminders.get(item.id).text !== item.text));
+      const freshTask = Array.isArray(receipt?.after) && /משימ|מטר/u.test(receipt.listName)
+        ? receipt.after.find(item => !item.checked && (!previousIds.has(item.id)
+          || receipt.before?.find(previous => previous.id === item.id)?.text !== item.text)) : null;
+      const scope = freshReminder ? "r" : "s";
+      const selected = freshReminder
+        ? menuRecords(store, chatId, scope)?.find(item => item.id === freshReminder.id)
+        : freshTask ? menuRecords(store, chatId, scope)?.find(item => item.kind === "item"
+          && item.name === receipt.listName && item.id === freshTask.id) : null;
+      if (selected) {
+        const details = renderRecordDetails(store, chatId, selected.key, scope, "c", 0);
+        if (details) {
+          await recordOperation(async () => {
+            assertActive();
+            await assertPermission();
+            const recordViews = { ...store.recordViews, [chatId]: {
+              key: selected.key, scope, mode: "c", offset: 0, awaitingDelete: false,
+              ...(details.completionDueAt != null ? { completionDueAt: details.completionDueAt } : {}),
+            } };
+            await saveStore({ ...store, recordViews });
+            store.recordViews = recordViews;
+          });
+          const actions = details.options.reply_markup.inline_keyboard.flat()
+            .filter(button => /^v:[dx]:/u.test(button.callback_data));
+          actions.splice(1, 0, { text: "✏️ עדכן",
+            callback_data: `v:i:${selected.key}:${scope}:c:0`, style: "success" });
+          directDetails = { reply_markup: { inline_keyboard: [actions] } };
+        }
+      }
+    }
+    const textOnly = shortAddition || isDailySummaryRequest(text)
+      || (receipt && shoppingClosed(displayStore, chatId, receipt.listName))
+      || (telegramResponseStyle && Boolean(parseContextualSchedule(text, history, summaryNow())))
+      || (telegramResponseStyle && isSummaryRequest(text));
+    const menu = textOnly ? null : receipt ? recordMenuForList(displayStore, chatId, receipt.listName)
+      : recordMenuForRequest(store, chatId, text)
+        ?? (parseNaturalTaskAction(text) ? recordMenuForList(store, chatId,
+          store.lastListActions?.[chatId]?.listName ?? "משימות") : null);
+    if (menu && !directDetails) await recordOperation(async () => {
+      assertActive();
+      await assertPermission();
+      await clearRecordView(store, chatId);
+    });
+    const listRead = !receipt && ["show-list", "list-lists"].includes(parseRecordQuery(text)?.type);
+    const deliveries = directDetails ? [[response, directDetails]]
+      : menuDelivery(menu, response, { summary: isSummaryRequest(text), listOnly: listRead });
+    for (const [body, options] of deliveries) {
+      assertActive();
+      if (options) await telegram.sendMessage(chatId, body, options);
+      else await telegram.sendMessage(chatId, body);
+    }
+    timings.telegramMs = Math.round(performance.now() - mark);
+    phase = "delivered";
+    return { delivered: true };
+  } catch (error) {
+    console.error("[Ah Sheli] Error in processOwnerMessage:", error);
+    try {
+      await telegram.sendMessage(chatId, "אופס אחי, אירעה שגיאה בעיבוד ההודעה. נסה שוב.");
+    } catch {}
+    return { error: true };
+  } finally {
+    if (phase !== "delivered") timings[`${phase}Ms`] = Math.round(performance.now() - mark);
+    console.info(`[Ah Sheli] Message timing ${JSON.stringify({
+      ...timings, totalMs: Math.round(performance.now() - started), phase,
+    })}`);
+  }
+}
