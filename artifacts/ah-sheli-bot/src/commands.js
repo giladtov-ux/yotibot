@@ -117,8 +117,6 @@ function helpMessage() {
     "“סמן חלב ברשימת הקניות” או “תמחק חלב מרשימת הקניות”",
     "“תזכיר לי ללכת לבנק מחר” — אשאל אותך באיזו שעה.",
     "“תזכיר לי מחר ב-10 בבוקר ללכת לדואר”",
-    "",
-    "אפשר גם לשאול מה השעה, או לכתוב “רשימות” ו“תזכורות”.",
   ].join("\n");
 }
 
@@ -183,22 +181,6 @@ async function runCommand(store, chatId, command, args) {
 
 function normalizedItemText(text) {
   return text.trim().toLocaleLowerCase("he-IL").replace(/[״׳"'`]/gu, "");
-}
-
-function findItemIndexes(items, requestedText) {
-  const requested = normalizedItemText(requestedText);
-  return items.flatMap((item, index) =>
-    normalizedItemText(item.text) === requested ? [index] : [],
-  );
-}
-
-function boundItemIndexes(items, intent) {
-  return intent.itemId ? items.flatMap((item, index) => item.id === intent.itemId ? [index] : [])
-    : findItemIndexes(items, intent.itemText);
-}
-
-function timeText(hour, minute) {
-  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 }
 
 async function handleNaturalIntent(store, chatId, intent) {
@@ -273,23 +255,25 @@ async function handleNaturalIntent(store, chatId, intent) {
       return savedListResponse(listName, savedItems);
     }
     case "schedule-reminders":
+      // מנקה תזכורות ישנות של היום ומחיל אך ורק את הלו"ז החדש והמעודכן שסופק
+      await mutateReminderState(store, candidate => {
+        const todayStr = new Date().toISOString().split("T")[0];
+        candidate.reminders = candidate.reminders.filter(r => {
+          const rDate = new Date(r.dueAt).toISOString().split("T")[0];
+          return rDate !== todayStr;
+        });
+      });
       return scheduleDailyReminders(store, chatId, intent.reminders, Date.now(), intent.intervalMinutes, intent.sourceText);
     default:
       return null;
   }
 }
 
-function responseText(intent, fallback) {
-  if (typeof intent.response !== "string") return fallback;
-  const response = intent.response.trim();
-  return response || fallback;
-}
-
 export async function handleAssistantIntent(store, chatId, intent, rawText = "", confirmedInterval = null, { semantic = false } = {}) {
   try {
     const response = await handleNaturalIntent(store, chatId, intent);
     if (response) return response;
-    return responseText(intent, "סגור אחי, מסודר.");
+    return "סגור אחי, מסודר.";
   } catch (error) {
     if (error instanceof UserInputError) {
       return `רק רגע אחי — ${error.message}`;
