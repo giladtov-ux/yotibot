@@ -39,42 +39,46 @@ export async function scheduleDailyReminders(store, chatId, rawEntries, now = Da
       const first = entries[0];
       const start = parseJerusalemDateTime(first.date,
         `${String(first.hour).padStart(2, "0")}:${String(first.minute).padStart(2, "0")}`, { allowPast: true });
-      planned = entries.map((entry, index) => ({ text: entry.text, dueAt: start + index * intervalMinutes * 60_000 }));
+      planned = entries.map((entry, index) => ({ text: entry.text, dueAt: start + index * intervalMinutes * 60_000, date: first.date }));
     } else {
       planned = entries.map(entry => ({
         text: entry.text,
         dueAt: parseJerusalemDateTime(entry.date,
           `${String(entry.hour).padStart(2, "0")}:${String(entry.minute).padStart(2, "0")}`,
           { allowPast: true }),
+        date: entry.date,
       })).sort((a, b) => a.dueAt - b.dueAt);
     }
   } catch (error) {
     return `לא נשמרו תזכורות מהלו״ז הזה: ${error.message}`;
   }
 
-  const known = new Set(store.reminders.filter(item => item.chatId === chatId).map(reminderKey));
-  const fresh = [], existing = [], past = [];
+  // ניקוי מוחלט של כל התזכורות הקודמות באותו תאריך כדי שהלו"ז החדש יחליף את הישן במדויק
+  const targetDates = [...new Set(planned.map(p => new Date(p.dueAt).toISOString().split("T")[0]))];
+
+  await mutateReminderState(store, candidate => {
+    candidate.reminders = candidate.reminders.filter(item => {
+      if (item.chatId !== chatId) return true;
+      const itemDate = new Date(item.dueAt).toISOString().split("T")[0];
+      return !targetDates.includes(itemDate);
+    });
+  });
+
+  const fresh = [];
   for (const item of planned) {
-    if (isReminderTimePast(item.dueAt, reminderValidationTime(now))) {
-      past.push(item);
-    } else if (known.has(reminderKey(item))) {
-      existing.push(item);
-    } else {
-      known.add(reminderKey(item));
-      fresh.push({ ...item, id: createId(), chatId, createdAt: now });
-    }
+    fresh.push({ ...item, id: createId(), chatId, createdAt: now });
   }
+
   if (fresh.length || sourceText) {
     await mutateReminderState(store, candidate => {
       candidate.reminders.push(...fresh);
       appendScheduleSource(candidate, chatId, sourceText);
     });
   }
+
   return [
     fresh.length
       ? friendlyConfirmation(`אזכיר לך:\n${fresh.map(describe).join("\n")}`)
       : "",
-    existing.length ? `זה כבר שמור אצלי:\n${existing.map(describe).join("\n")}` : "",
-    past.length ? `אלה כבר עברו, אז לא הזזתי אותם ליום אחר:\n${past.map(describe).join("\n")}` : "",
   ].filter(Boolean).join("\n\n");
 }
