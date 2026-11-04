@@ -71,15 +71,15 @@ export function setUnknownCommitHandler(fn) {
 
 export async function mutateReminderState(store, updater) {
   if (typeof updater === "function") {
-    // מעביר את כל ה־memoryStore כדי ש־candidate.reminders יפעל נכון
     await updater(memoryStore);
   }
   return true;
 }
 
 export async function mutateList(store, chatId, name, updater) {
+  const lists = getChatLists(store, chatId);
   if (typeof updater === "function") {
-    await updater(memoryStore.lists);
+    await updater(lists);
   }
-  return [];
+  return lists[name] || [];
 }
