@@ -4,11 +4,11 @@ import { resolve } from "node:path";
 
 console.log("[Ah Sheli] Starting bot application...");
 
-const targetPath = resolve(process.cwd(), "artifacts/api-server/src/index.ts");
+const targetPath = resolve(process.cwd(), "artifacts/api-server/dist/index.js");
 
 if (existsSync(targetPath)) {
-  console.log(`[Ah Sheli] Launching API server via tsx from: ${targetPath}`);
-  const child = spawn("npx", ["tsx", targetPath], {
+  console.log(`[Ah Sheli] Launching compiled server from: ${targetPath}`);
+  const child = spawn("node", [targetPath], {
     stdio: "inherit",
     env: process.env
   });
