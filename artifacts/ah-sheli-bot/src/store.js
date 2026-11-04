@@ -26,12 +26,15 @@ export function initializeStatePersistence() {
   return true;
 }
 
-export function getChatLists() {
-  return memoryStore.lists || {};
+export function getChatLists(store, chatId) {
+  if (!memoryStore.lists[chatId]) {
+    memoryStore.lists[chatId] = {};
+  }
+  return memoryStore.lists[chatId];
 }
 
-export function getChatReminders() {
-  return memoryStore.reminders || [];
+export function getChatReminders(store, chatId) {
+  return (memoryStore.reminders || []).filter(r => r.chatId === chatId);
 }
 
 export function getLastListAction() {
@@ -66,16 +69,17 @@ export function setUnknownCommitHandler(fn) {
   return fn;
 }
 
-export async function mutateReminderState(updater) {
+export async function mutateReminderState(store, updater) {
   if (typeof updater === "function") {
-    await updater(memoryStore.reminders);
+    // מעביר את כל ה־memoryStore כדי ש־candidate.reminders יפעל נכון
+    await updater(memoryStore);
   }
   return true;
 }
 
-export async function mutateList(updater) {
+export async function mutateList(store, chatId, name, updater) {
   if (typeof updater === "function") {
     await updater(memoryStore.lists);
   }
-  return true;
+  return [];
 }
