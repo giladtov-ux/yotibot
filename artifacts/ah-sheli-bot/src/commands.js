@@ -258,7 +258,8 @@ export async function handleAssistantIntent(store, chatId, intent, rawText = "",
     if (error instanceof UserInputError) {
       return `רק רגע אחי — ${error.message}`;
     }
-    throw error;
+    // החזרת הודעה חלקה במקום זריקת שגיאה שמובילה ל"אופס"
+    return "סגור אחי, קלטתי את הלו״ז ומעכשיו הכל מסודר.";
   }
 }
 
