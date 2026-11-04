@@ -11,19 +11,17 @@ import {
   setPendingListAction,
 } from "./store.js";
 import {
-  extractHebrewTime,
   formatJerusalemTime,
   parseJerusalemDateTime,
 } from "./time.js";
-import { extractHebrewDate, parseNaturalIntent } from "./natural-language.js";
+import { parseNaturalIntent } from "./natural-language.js";
 import { scheduleDailyReminders } from "./schedule-reminders.js";
-import { scheduleIntervalReminder, extractRequestedInterval } from "./reminder-intervals.js";
+import { scheduleIntervalReminder } from "./reminder-intervals.js";
 import { parseRecordQuery, parseExplicitListWrite } from "./record-queries.js";
 import { friendlyConfirmation, completionEncouragement } from "./conversation-style.js";
 import { parseListContinuation, parsePendingListTarget, isListCancellation } from "./list-continuation.js";
 import { parseListDeletion } from "./list-deletion.js";
 import { bindItemIntent } from "./task-understanding.js";
-import { persistTrackedReminder } from "./appointment-flow.js";
 
 import { listItemLabel } from "./shopping-emoji.js";
 
@@ -80,30 +78,6 @@ function preferredListName(requestedName) {
     return requestedName.trim().slice(1);
   }
   return requestedName.trim();
-}
-
-function splitListAndValue(input, valueLabel) {
-  const separator = input.indexOf("|");
-  if (separator < 0) {
-    throw new UserInputError(
-      `צריך להפריד בין שם הרשימה ל${valueLabel} עם |. לדוגמה: קניות | חלב`,
-    );
-  }
-  return [
-    ensureText(input.slice(0, separator), "שם הרשימה", 60),
-    ensureText(input.slice(separator + 1), valueLabel, 200),
-  ];
-}
-
-function parsePosition(text, itemCount) {
-  if (!/^\d+$/.test(text)) {
-    throw new UserInputError("צריך לכתוב את מספר הפריט שמופיע ברשימה.");
-  }
-  const position = Number(text);
-  if (position < 1 || position > itemCount) {
-    throw new UserInputError("לא מצאתי פריט במספר הזה ברשימה.");
-  }
-  return position - 1;
 }
 
 function helpMessage() {
@@ -255,7 +229,6 @@ async function handleNaturalIntent(store, chatId, intent) {
       return savedListResponse(listName, savedItems);
     }
     case "schedule-reminders":
-      // מנקה תזכורות ישנות של היום ומחיל אך ורק את הלו"ז החדש והמעודכן שסופק
       await mutateReminderState(store, candidate => {
         const todayStr = new Date().toISOString().split("T")[0];
         candidate.reminders = candidate.reminders.filter(r => {
@@ -269,17 +242,28 @@ async function handleNaturalIntent(store, chatId, intent) {
   }
 }
 
+function responseText(intent, fallback) {
+  if (typeof intent.response !== "string") return fallback;
+  const response = intent.response.trim();
+  return response || fallback;
+}
+
 export async function handleAssistantIntent(store, chatId, intent, rawText = "", confirmedInterval = null, { semantic = false } = {}) {
   try {
     const response = await handleNaturalIntent(store, chatId, intent);
     if (response) return response;
-    return "סגור אחי, מסודר.";
+    return responseText(intent, "סגור אחי, מסודר.");
   } catch (error) {
     if (error instanceof UserInputError) {
       return `רק רגע אחי — ${error.message}`;
     }
     throw error;
   }
+}
+
+export async function handleText(store, chatId, rawText) {
+  const intent = parseNaturalIntent(rawText);
+  return handleAssistantIntent(store, chatId, intent, rawText);
 }
 
 export async function resolvePendingList(store, chatId, rawText) {
