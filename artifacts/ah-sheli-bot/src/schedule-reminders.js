@@ -24,15 +24,21 @@ export async function scheduleDailyReminders(store, chatId, rawEntries, now = Da
 
   let planned = [];
   try {
-    planned = entries.map(entry => ({
-      text: entry.text,
-      dueAt: parseJerusalemDateTime(
+    planned = entries.map(entry => {
+      const dueAt = parseJerusalemDateTime(
         entry.date,
         `${String(entry.hour).padStart(2, "0")}:${String(entry.minute).padStart(2, "0")}`,
         { allowPast: true }
-      ),
-      date: entry.date,
-    })).sort((a, b) => a.dueAt - b.dueAt);
+      );
+      if (!Number.isFinite(dueAt)) {
+        throw new Error("Invalid Jerusalem datetime");
+      }
+      return {
+        text: entry.text,
+        dueAt,
+        date: entry.date,
+      };
+    }).sort((a, b) => a.dueAt - b.dueAt);
   } catch (error) {
     // במקום ליפול, נגדיר זמנים בטוחים לפי השעה הנוכחית
     planned = entries.map((entry, index) => ({
