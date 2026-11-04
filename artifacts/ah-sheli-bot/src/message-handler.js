@@ -32,53 +32,63 @@ export async function handleOwnerUpdate(store, telegram, update, {
   transcribeVoice,
   assertPermission = async () => {},
 } = {}) {
-  let message = update.message;
-  // Text always takes the original path, without loading or configuring speech
-  // support. An optional audio attachment must never override written text.
-  const hasText = typeof message?.text === "string" && message.text.length > 0;
-  if (!hasText && !message?.voice) return { ignored: true };
-  // Telegram dates are UTC epoch seconds, not an Israel wall-clock string.
-  const requestTime = Number.isSafeInteger(message.date) && message.date > 0
-    ? message.date * 1000 : Date.now();
-  await assertPermission();
-  if (!hasText) {
-    // Never download or send another user's recording to the transcription API.
-    if (!ownerChatId || String(message.chat.id) !== ownerChatId
-      || String(message.from?.id) !== ownerChatId || message.from?.is_bot
-      || message.chat.type !== "private") return { ignored: true };
-    let text;
-    let voiceSupport;
-    try {
-      assertActive();
-      // A missing speech dependency or credential must affect voice only.
-      voiceSupport = await import("./voice-transcription.js");
-      text = await (transcribeVoice ?? voiceSupport.transcribeTelegramVoice)(
-        message.voice, telegram, { assertActive });
-      if (typeof text !== "string" || !text.trim()) {
-        throw Object.assign(new Error("Empty transcription"), { code: "empty" });
-      }
-    } catch (error) {
-      assertActive();
-      // Log only our own safe categories/status, never audio, transcripts,
-      // provider bodies, file URLs or credentials from transport errors.
-      console.warn("[Ah Sheli] Voice transcription failed", voiceSupport && error instanceof voiceSupport.VoiceTranscriptionError
-        ? { code: error.code, stage: error.stage, status: error.status } : { code: "unavailable" });
-      await telegram.sendMessage(String(message.chat.id), voiceSupport
-        ? voiceSupport.voiceFailureReply(error)
-        : "לא הצלחתי לתמלל את ההודעה הקולית כרגע. אפשר לשלוח שוב או לכתוב לי?");
-      return { transcriptionFailed: true };
-    }
-    assertActive();
+  try {
+    let message = update.message;
+    // Text always takes the original path, without loading or configuring speech
+    // support. An optional audio attachment must never override written text.
+    const hasText = typeof message?.text === "string" && message.text.length > 0;
+    if (!hasText && !message?.voice) return { ignored: true };
+    // Telegram dates are UTC epoch seconds, not an Israel wall-clock string.
+    const requestTime = Number.isSafeInteger(message.date) && message.date > 0
+      ? message.date * 1000 : Date.now();
     await assertPermission();
-    message = { ...message, text: text.trim() };
+    if (!hasText) {
+      // Never download or send another user's recording to the transcription API.
+      if (!ownerChatId || String(message.chat.id) !== ownerChatId
+        || String(message.from?.id) !== ownerChatId || message.from?.is_bot
+        || message.chat.type !== "private") return { ignored: true };
+      let text;
+      let voiceSupport;
+      try {
+        assertActive();
+        // A missing speech dependency or credential must affect voice only.
+        voiceSupport = await import("./voice-transcription.js");
+        text = await (transcribeVoice ?? voiceSupport.transcribeTelegramVoice)(
+          message.voice, telegram, { assertActive });
+        if (typeof text !== "string" || !text.trim()) {
+          throw Object.assign(new Error("Empty transcription"), { code: "empty" });
+        }
+      } catch (error) {
+        assertActive();
+        // Log only our own safe categories/status, never audio, transcripts,
+        // provider bodies, file URLs or credentials from transport errors.
+        console.warn("[Ah Sheli] Voice transcription failed", voiceSupport && error instanceof voiceSupport.VoiceTranscriptionError
+          ? { code: error.code, stage: error.stage, status: error.status } : { code: "unavailable" });
+        await telegram.sendMessage(String(message.chat.id), voiceSupport
+          ? voiceSupport.voiceFailureReply(error)
+          : "לא הצלחתי לתמלל את ההודעה הקולית כרגע. אפשר לשלוח שוב או לכתוב לי?");
+        return { transcriptionFailed: true };
+      }
+      assertActive();
+      await assertPermission();
+      message = { ...message, text: text.trim() };
+    }
+    if (await handleInterruptedRequests(message, telegram, {
+      ...inspectionOptions,
+      ownerChatId, currentUpdateId: update.update_id, assertActive,
+    })) return;
+    return withReminderRequestTime(() => replyToOwnerMessage(store, telegram, String(message.chat.id), message.text, {
+      ...replyOptions, assertActive, assertPermission,
+    }), requestTime);
+  } catch (error) {
+    console.error("[Ah Sheli] Unhandled error in handleOwnerUpdate:", error);
+    try {
+      if (update?.message?.chat?.id) {
+        await telegram.sendMessage(String(update.message.chat.id), "אופס אחי, קרתה שגיאה בעיבוד הבקשה. נסה שוב.");
+      }
+    } catch {}
+    return { error: true };
   }
-  if (await handleInterruptedRequests(message, telegram, {
-    ...inspectionOptions,
-    ownerChatId, currentUpdateId: update.update_id, assertActive,
-  })) return;
-  return withReminderRequestTime(() => replyToOwnerMessage(store, telegram, String(message.chat.id), message.text, {
-    ...replyOptions, assertActive, assertPermission,
-  }), requestTime);
 }
 
 // Shared by the real incoming-message handler and end-to-end delivery checks.
@@ -210,88 +220,4 @@ async function processOwnerMessage(store, telegram, chatId, text, {
     if (shortAddition) {
       response = addedItems ? "נוסף לרשימה"
         : JSON.stringify(receipt.before) !== JSON.stringify(receipt.after)
-          ? "הרשימה עודכנה" : "כבר קיים ברשימה";
-    }
-    if (!telegramDaily) response = await recordOperation(async () => {
-      await assertPermission();
-      assertActive();
-      return rememberListConfirmation(store, chatId, text, response);
-    });
-    timings.assistantMs = Math.round(performance.now() - mark);
-    phase = "save";
-    mark = performance.now();
-    assertActive();
-    await saveConversation(chatId, text, response);
-    timings.saveMs = Math.round(performance.now() - mark);
-    phase = "telegram";
-    mark = performance.now();
-    assertActive();
-    const displayStore = receipt?.after ? {
-      ...store, lists: { ...store.lists, [chatId]: { ...store.lists[chatId], [receipt.listName]: receipt.after } },
-    } : store;
-    let directDetails = null;
-    if (telegramResponseStyle && !telegramDaily && !isSummaryRequest(text)) {
-      const freshReminder = store.reminders.find(item => item.chatId === chatId
-        && item.trackingTaskId && (!previousReminders.has(item.id)
-          || previousReminders.get(item.id).dueAt !== item.dueAt
-          || previousReminders.get(item.id).text !== item.text));
-      const freshTask = Array.isArray(receipt?.after) && /משימ|מטר/u.test(receipt.listName)
-        ? receipt.after.find(item => !item.checked && (!previousIds.has(item.id)
-          || receipt.before?.find(previous => previous.id === item.id)?.text !== item.text)) : null;
-      const scope = freshReminder ? "r" : "s";
-      const selected = freshReminder
-        ? menuRecords(store, chatId, scope)?.find(item => item.id === freshReminder.id)
-        : freshTask ? menuRecords(store, chatId, scope)?.find(item => item.kind === "item"
-          && item.name === receipt.listName && item.id === freshTask.id) : null;
-      if (selected) {
-        const details = renderRecordDetails(store, chatId, selected.key, scope, "c", 0);
-        if (details) {
-          await recordOperation(async () => {
-            assertActive();
-            await assertPermission();
-            const recordViews = { ...store.recordViews, [chatId]: {
-              key: selected.key, scope, mode: "c", offset: 0, awaitingDelete: false,
-              ...(details.completionDueAt != null ? { completionDueAt: details.completionDueAt } : {}),
-            } };
-            await saveStore({ ...store, recordViews });
-            store.recordViews = recordViews;
-          });
-          const actions = details.options.reply_markup.inline_keyboard.flat()
-            .filter(button => /^v:[dx]:/u.test(button.callback_data));
-          actions.splice(1, 0, { text: "✏️ עדכן",
-            callback_data: `v:i:${selected.key}:${scope}:c:0`, style: "success" });
-          directDetails = { reply_markup: { inline_keyboard: [actions] } };
-        }
-      }
-    }
-    const textOnly = shortAddition || isDailySummaryRequest(text)
-      || (receipt && shoppingClosed(displayStore, chatId, receipt.listName))
-      || (telegramResponseStyle && Boolean(parseContextualSchedule(text, history, summaryNow())))
-      || (telegramResponseStyle && isSummaryRequest(text));
-    const menu = textOnly ? null : receipt ? recordMenuForList(displayStore, chatId, receipt.listName)
-      : recordMenuForRequest(store, chatId, text)
-        ?? (parseNaturalTaskAction(text) ? recordMenuForList(store, chatId,
-          store.lastListActions?.[chatId]?.listName ?? "משימות") : null);
-    if (menu && !directDetails) await recordOperation(async () => {
-      assertActive();
-      await assertPermission();
-      await clearRecordView(store, chatId);
-    });
-    const listRead = !receipt && ["show-list", "list-lists"].includes(parseRecordQuery(text)?.type);
-    const deliveries = directDetails ? [[response, directDetails]]
-      : menuDelivery(menu, response, { summary: isSummaryRequest(text), listOnly: listRead });
-    for (const [body, options] of deliveries) {
-      assertActive();
-      if (options) await telegram.sendMessage(chatId, body, options);
-      else await telegram.sendMessage(chatId, body);
-    }
-    timings.telegramMs = Math.round(performance.now() - mark);
-    phase = "delivered";
-    return { delivered: true };
-  } finally {
-    if (phase !== "delivered") timings[`${phase}Ms`] = Math.round(performance.now() - mark);
-    console.info(`[Ah Sheli] Message timing ${JSON.stringify({
-      ...timings, totalMs: Math.round(performance.now() - started), phase,
-    })}`);
-  }
-}
+          ? "הרשימה עוד
