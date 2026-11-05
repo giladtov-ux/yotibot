@@ -1,10 +1,8 @@
-import { normalizeScheduledReminders } from "./assistant-intent.js";
 import { createId, mutateReminderState } from "./store.js";
 import { formatJerusalemTime, parseJerusalemDateTime } from "./time.js";
 import { friendlyConfirmation } from "./conversation-style.js";
 import { appendScheduleSource } from "./weekly-schedules.js";
 
-const normalizedText = text => text.trim().replace(/\s+/gu, " ").toLocaleLowerCase("he-IL");
 const describe = item => `• ${formatJerusalemTime(item.dueAt)} — ${item.text}`;
 
 export async function scheduleDailyReminders(store, chatId, rawEntries, now = Date.now(), intervalMinutes = null, sourceText = "") {
@@ -41,7 +39,7 @@ export async function scheduleDailyReminders(store, chatId, rawEntries, now = Da
   }
 
   if (planned.length === 0) {
-    return "אחי, לא הצלחתי לזהות שעות תקינות בלו״ז ששלחת. תוודא שהשעות מופיעות בצורה ברורה.";
+    return "אחי, לא הצלחתי לזהות שעות תקינות בלו״ז ששלחת.";
   }
 
   planned.sort((a, b) => a.dueAt - b.dueAt);
