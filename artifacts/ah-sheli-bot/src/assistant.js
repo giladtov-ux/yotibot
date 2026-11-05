@@ -219,4 +219,104 @@ async function processAssistantMessage(
   } catch (error) {
     if (!(error instanceof AiServiceError)) throw error;
     if (scheduleInformation) {
-      console.warn(`[Ah She
+      console.warn(`[Ah Sheli] Schedule information read from saved records (${error.code}).`);
+      return handleAssistantIntent(store, chatId, { type: "list-reminders" }, text);
+    }
+    if (error.code === "invalid_response") {
+      console.warn("[Ah Sheli] AI output incomplete or unreadable; no model action applied.");
+      let sourceSchedule;
+      try { sourceSchedule = parseScheduleFallback(text); } catch { /* no guessed dates */ }
+      if (sourceSchedule?.type === "schedule-reminders") {
+        const reply = await handleAssistantIntent(store, chatId, sourceSchedule, rawText);
+        return reply;
+      }
+      return handleAssistantIntent(store, chatId, {
+        type: "clarify", response: "אחי, התשובה נקטעה לי הפעם. אפשר לנסות שוב בעוד רגע; לא שיניתי דבר בעקבות הבקשה הזו.",
+      }, text);
+    }
+    const schedule = parseScheduleFallback(text);
+    if (schedule) {
+      console.warn(`[Ah Sheli] Schedule backup used (${error.code}).`);
+      const reply = await handleAssistantIntent(store, chatId, schedule, rawText);
+      return reply;
+    }
+    console.warn(`[Ah Sheli] AI unavailable (${error.code}); attempting current-message recovery.`);
+    const localReply = await handleText(store, chatId, text);
+    if (["greeting", "thanks", "farewell", "small-talk", "tell-time", "tell-date"]
+      .includes(localIntent?.type)) return localReply;
+    return `${error.message}\n\n${localReply}`;
+  }
+  if (intent.type === "update-reminder") {
+    if (scheduleInformation) return handleAssistantIntent(store, chatId, { type: "list-reminders" }, text);
+    return updateReminderTime(store, chatId, text, intent, history);
+  }
+  if (scheduleInformation && !["answer", "list-reminders",
+    "help", "greeting", "thanks", "farewell", "small-talk", "tell-time", "tell-date"].includes(intent.type)) {
+    return handleAssistantIntent(store, chatId, { type: "list-reminders" }, text);
+  }
+  const intervalClarification = /^(?:מחר|היום|מחרתיים|(?:ב[־-]?)?\d{1,2}:\d{2}|\d+\s*פעמים)[.!? ]*$/u.test(text);
+  const previousInterval = intervalClarification
+    ? context.recentConversation.filter(row => row.role === "user")
+      .map(row => extractRequestedInterval(row.content ?? row.text)).filter(Boolean).at(-1)
+    : null;
+  if (intent.type === "schedule-reminders" && !extractRequestedInterval(text)?.minutes && !previousInterval) {
+    let suppliedSchedule;
+    try { suppliedSchedule = parseScheduleFallback(text); } catch { /* retain source instead of guessing */ }
+    if (suppliedSchedule?.type === "schedule-reminders" && suppliedSchedule.reminders.every(entry =>
+      entry.text && entry.date && entry.hour !== null && entry.minute !== null)) {
+      intent = { ...intent, reminders: suppliedSchedule.reminders };
+    }
+    const source = [text, ...context.recentConversation.filter(row => row.role === "user")
+      .map(row => row.content ?? row.text)].join("\n");
+    const suppliedClocks = new Set([...source.matchAll(/(?<!\d)([01]?\d|2[0-3]):([0-5]\d)(?!\d)/gu)]
+      .map(match => `${Number(match[1])}:${Number(match[2])}`));
+    for (const segment of source.split(/[\n,;]+/u)) {
+      let rest = segment;
+      for (let count = 0; count < 100; count++) {
+        const time = extractHebrewTime(rest);
+        if (!time) break;
+        suppliedClocks.add(`${time.hour}:${time.minute}`);
+        rest = rest.slice(time.end);
+      }
+    }
+    intent = { ...intent, reminders: intent.reminders.map(entry => suppliedClocks.has(`${entry.hour}:${entry.minute}`)
+      ? entry : { ...entry, hour: null, minute: null }) };
+  }
+  if (["answer", "clarify", "small-talk", "greeting", "thanks", "farewell"].includes(intent?.type)) {
+    if (/נראה\s+ששלחת(?:\s+לי)?\s+מידע\s+טכני/u.test(intent.response ?? "")) {
+      return "מה תרצה לעשות במשימה או ברשימה?";
+    }
+    const listName = listClearTarget(store, chatId, rawText);
+    const claimsDeletion = isDeletionSuccessClaim(intent.response);
+    if (listName && (claimsDeletion || !isListConfirmationQuestion(intent.response ?? ""))) {
+      return handleAssistantIntent(store, chatId, { type: "clear-list", listName }, rawText, previousInterval, { semantic: true });
+    }
+    const explicitAddition = /^(?:בבקשה\s+)?(?:תוסיף|תוסיפי|הוסף|הוסיפי|תכניס|תכניסי)\s+/u.test(text);
+    const additionProgress = /(?:אני\s+(?:מוסיף|מוסיפה|מכניס|מכניסה|שומר|שומרת|רושם|רושמת)|(?:מוסיף|מוסיפה|מכניס|מכניסה)\s+(?:עכשיו|כרגע)|(?:אוסיף|אשמור|ארשום)\s+)/u.test(intent.response ?? "");
+    const currentTaskAction = /^(?:סיימתי|עשיתי|גמרתי|סגרתי|תוריד|להוריד|תעיף|תמחק|מחק|תשנה|שנה|תעדכן|עדכן)(?:\s|$)/u.test(text);
+    if (!currentTaskAction && !explicitAddition && !additionProgress) {
+      if (claimsDeletion) return "לא מחקתי דבר. איזה פריט או רשימה למחוק?";
+      if (isUpdateSuccessClaim(intent.response)) return "עוד לא שיניתי דבר. מה בדיוק לעדכן?";
+    }
+    if (explicitAddition || additionProgress || currentTaskAction || claimsDeletion || isUpdateSuccessClaim(intent.response)) {
+      const repaired = await analyzer(text, {
+        ...context,
+        actionReceiptCorrection: {
+          previousReplyWasNotExecuted: true,
+          instruction: "התשובה הקודמת לא ביצעה דבר. פענח רק את הבקשה הנוכחית: משימה חדשה add-task; הוספה לרשימה add-items; סיום משימה mark-item; הורדת פריט remove-item; שינוי נוסח update-item עם text החדש. זהה listName ו-itemText לפי הנתונים וההקשר, ללא דרישה למילות פקודה. שמור את מלוא התוכן. אל תחזיר הבטחת ביצוע או בקשת המתנה. שאלות, שלילה ושיחה אינן אישור לשינוי.",
+        },
+      });
+      if (["add-task", "add-items", "create-list", "mark-item", "remove-item", "update-item"].includes(repaired?.type)) {
+        return handleAssistantIntent(store, chatId, repaired, rawText, previousInterval, { semantic: true });
+      }
+      return explicitAddition || additionProgress ? "עוד לא נשמרה משימה. כדי להוסיף במדויק, צריך את הפעולה עצמה."
+        : "צריך לזהות את הפריט המדויק לפני שינוי. אפשר לבחור אותו ברשימה.";
+    }
+    if (isUpdateSuccessClaim(intent.response)) return "עוד לא שיניתי דבר. מה בדיוק לעדכן?";
+  }
+  if (telegramResponseStyle && intent?.type === "reminder") {
+    intent = { ...intent, trackTask: getPendingAction(store, chatId)?.trackTask ?? true,
+      taskListName: intent.listName === "מטרות" ? "מטרות" : "משימות" };
+  }
+  return handleAssistantIntent(store, chatId, intent, rawText, previousInterval, { semantic: true });
+}
