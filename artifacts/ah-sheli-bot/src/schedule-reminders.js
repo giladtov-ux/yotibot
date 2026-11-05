@@ -10,11 +10,10 @@ const describe = item => `• ${formatJerusalemTime(item.dueAt)} — ${item.text
 export async function scheduleDailyReminders(store, chatId, rawEntries, now = Date.now(), intervalMinutes = null, sourceText = "") {
   const todayStr = new Date().toISOString().split("T")[0];
   
-  // המרה והגנה מלאה כך שאף פעם לא ייזרקו שגיאות אם חסרים שדות
   const entries = (Array.isArray(rawEntries) ? rawEntries : []).map(entry => ({
     text: entry?.text || "תזכורת",
     date: entry?.date || todayStr,
-    hour: entry?.hour ?? 8,
+    hour: entry?.hour ?? null,
     minute: entry?.minute ?? 0,
   }));
 
@@ -23,30 +22,29 @@ export async function scheduleDailyReminders(store, chatId, rawEntries, now = Da
   }
 
   let planned = [];
-  try {
-    planned = entries.map(entry => {
+  for (const entry of entries) {
+    if (entry.hour == null || isNaN(entry.hour)) continue;
+    try {
       const dueAt = parseJerusalemDateTime(
         entry.date,
         `${String(entry.hour).padStart(2, "0")}:${String(entry.minute).padStart(2, "0")}`,
         { allowPast: true }
       );
-      if (!Number.isFinite(dueAt)) {
-        throw new Error("Invalid Jerusalem datetime");
+      if (Number.isFinite(dueAt)) {
+        planned.push({
+          text: entry.text,
+          dueAt,
+          date: entry.date,
+        });
       }
-      return {
-        text: entry.text,
-        dueAt,
-        date: entry.date,
-      };
-    }).sort((a, b) => a.dueAt - b.dueAt);
-  } catch (error) {
-    // במקום ליפול, נגדיר זמנים בטוחים לפי השעה הנוכחית
-    planned = entries.map((entry, index) => ({
-      text: entry.text,
-      dueAt: now + index * 60_000,
-      date: todayStr,
-    }));
+    } catch {}
   }
+
+  if (planned.length === 0) {
+    return "אחי, לא הצלחתי לזהות שעות תקינות בלו״ז ששלחת. תוודא שהשעות מופיעות בצורה ברורה.";
+  }
+
+  planned.sort((a, b) => a.dueAt - b.dueAt);
 
   const targetDates = [...new Set(planned.map(p => new Date(p.dueAt).toISOString().split("T")[0]))];
 
