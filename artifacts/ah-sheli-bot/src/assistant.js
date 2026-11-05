@@ -159,6 +159,10 @@ async function processAssistantMessage(
 ) {
   const text = rawText.trim();
   
+  // זיהוי לו״ז שבועי (כמו א׳-ה׳) ושמירתו מידית לכל הימים
+  const weekly = parseWeeklySchedule(rawText);
+  if (weekly) return saveWeeklySchedule(store, chatId, weekly, reminderValidationTime());
+
   // חסימה מוחלטת: אם יש קלט מרובה שורות הכולל שעונים/שעות, ניתוב ישירות למסלול הלו״ז המלא
   const hasMultipleLinesWithTime = text.split("\n").filter(l => /^\d{1,2}:\d{2}/u.test(l.trim())).length > 1;
   if (hasMultipleLinesWithTime) {
@@ -180,8 +184,6 @@ async function processAssistantMessage(
     const sources = (store.savedSchedules ?? []).filter(item => item.chatId === chatId);
     return sources.length ? sources.map(item => item.source).join("\n\n") : "עוד לא שמרת אצלי לו״ז קבוע.";
   }
-  const weekly = parseWeeklySchedule(rawText);
-  if (weekly) return saveWeeklySchedule(store, chatId, weekly, reminderValidationTime());
   const deletion = parseListDeletion(text);
   if (deletion) return handleAssistantIntent(store, chatId, deletion, text);
   const pendingListResponse = scheduleInformation ? null
