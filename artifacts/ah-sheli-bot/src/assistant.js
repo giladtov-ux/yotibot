@@ -1,7 +1,7 @@
 import { handleAssistantIntent, handleText, resolvePendingList, resolvePendingReminder } from "./commands.js";
 import { listClearTarget, isListConfirmationQuestion } from "./list-confirmations.js";
 import { isDeletionSuccessClaim } from "./deletion-receipts.js";
-import { askAssistant as analyzeMessage, parseWeeklySchedule, saveWeeklySchedule } from "./lib/assistant.server.ts";
+import { askAssistant as analyzeMessage } from "./lib/assistant.server.ts";
 import { getChatReminders, getPendingAction, getLastListAction, getPendingListAction } from "./store.js";
 import { formatJerusalemTime, getJerusalemDateString, extractHebrewTime,
   reminderValidationTime, withReminderRequestTime } from "./time.js";
@@ -159,10 +159,6 @@ async function processAssistantMessage(
 ) {
   const text = rawText.trim();
   
-  // זיהוי לו״ז שבועי (כמו א׳-ה׳) ושמירתו מידית לכל הימים
-  const weekly = parseWeeklySchedule(rawText);
-  if (weekly) return saveWeeklySchedule(store, chatId, weekly, reminderValidationTime());
-
   // חסימה מוחלטת: אם יש קלט מרובה שורות הכולל שעונים/שעות, ניתוב ישירות למסלול הלו״ז המלא
   const hasMultipleLinesWithTime = text.split("\n").filter(l => /^\d{1,2}:\d{2}/u.test(l.trim())).length > 1;
   if (hasMultipleLinesWithTime) {
