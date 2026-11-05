@@ -158,6 +158,13 @@ async function processAssistantMessage(
   { telegramResponseStyle = false } = {},
 ) {
   const text = rawText.trim();
+  
+  // חסימה מוחלטת: אם יש קלט מרובה שורות הכולל שעונים/שעות, ניתוב ישירות למסלול הלו״ז המלא
+  const hasMultipleLinesWithTime = text.split("\n").filter(l => /^\d{1,2}:\d{2}/u.test(l.trim())).length > 1;
+  if (hasMultipleLinesWithTime) {
+    return handleAssistantIntent(store, chatId, { type: "schedule-reminders", sourceText: text }, text);
+  }
+
   if (telegramResponseStyle) {
     const appointment = parseNewAppointment(text, history, reminderValidationTime());
     if (appointment) return handleAssistantIntent(store, chatId, appointment, text);
