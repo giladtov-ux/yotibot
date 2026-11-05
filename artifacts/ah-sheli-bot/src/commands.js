@@ -153,14 +153,32 @@ async function runCommand(store, chatId, command, args) {
   }
 }
 
-function normalizedItemText(text) {
-  return text.trim().toLocaleLowerCase("he-IL").replace(/[״׳"'`]/gu, "");
-}
-
-async function handleNaturalIntent(store, chatId, intent) {
+async function handleNaturalIntent(store, chatId, intent, rawText = "") {
   const chatLists = getChatLists(store, chatId);
 
-  switch (intent.type) {
+  // הגנה קשיחה: אם ההודעה מכילה מבנה של לו״ז/שעות, נאלץ את הכוונה להיות schedule-reminders
+  let targetIntent = intent;
+  if (/תעדכן.*לוח הזמנים|השכמה|שעון נוכחות|יציאה לאיסופים/u.test(rawText) && targetIntent.type !== "schedule-reminders") {
+    // ננתח את השורות ישירות מהטקסט הגולמי כגיבוי מוחלט
+    const lines = rawText.split("\n").map(l => l.trim()).filter(Boolean);
+    const parsedReminders = [];
+    for (const line of lines) {
+      const match = line.match(/^(\d{1,2}):(\d{2})\s+(.+)$/u) || line.match(/^(\d{1,2}):(\d{2})/u);
+      if (match) {
+        parsedReminders.push({
+          text: match[3] || line,
+          hour: parseInt(match[1], 10),
+          minute: parseInt(match[2], 10),
+          date: new Date().toISOString().split("T")[0]
+        });
+      }
+    }
+    if (parsedReminders.length > 0) {
+      targetIntent = { type: "schedule-reminders", reminders: parsedReminders, sourceText: rawText };
+    }
+  }
+
+  switch (targetIntent.type) {
     case "help":
       return helpMessage();
     case "greeting":
@@ -175,20 +193,20 @@ async function handleNaturalIntent(store, chatId, intent) {
       return `עכשיו ${new Intl.DateTimeFormat("he-IL", {
         timeZone: "Asia/Jerusalem",
         timeStyle: "short",
-      }).format(new Date(intent.now))}.`;
+      }).format(new Date(targetIntent.now || Date.now()))}.`;
     case "tell-date":
       return `היום ${new Intl.DateTimeFormat("he-IL", {
         timeZone: "Asia/Jerusalem",
         dateStyle: "full",
-      }).format(new Date(intent.now))}.`;
+      }).format(new Date(targetIntent.now || Date.now()))}.`;
     case "list-lists":
       return runCommand(store, chatId, "lists", "");
     case "list-reminders":
       return runCommand(store, chatId, "reminders", "");
     case "repeat-reminder":
-      return scheduleIntervalReminder(store, chatId, intent);
+      return scheduleIntervalReminder(store, chatId, targetIntent);
     case "create-list": {
-      const name = ensureText(preferredListName(intent.name), "שם הרשימה", 60);
+      const name = ensureText(preferredListName(targetIntent.name), "שם הרשימה", 60);
       if (findListName(chatLists, name)) {
         return `כבר יש לך רשימה בשם “${name}”.`;
       }
@@ -196,10 +214,10 @@ async function handleNaturalIntent(store, chatId, intent) {
       return friendlyConfirmation(`פתחתי לך את הרשימה “${name}”.`);
     }
     case "show-list":
-      return runCommand(store, chatId, "show", intent.name);
+      return runCommand(store, chatId, "show", targetIntent.name);
     case "add-items": {
-      const requestedListName = ensureText(intent.listName, "שם הרשימה", 60);
-      const items = intent.items.map((item) => ensureText(item, "הפריט", 200));
+      const requestedListName = ensureText(targetIntent.listName, "שם הרשימה", 60);
+      const items = targetIntent.items.map((item) => ensureText(item, "הפריט", 200));
       if (items.length === 0) return "לא זיהיתי אילו פריטים להוסיף.";
       let existingName = findListName(chatLists, requestedListName);
       const created = !existingName;
@@ -213,11 +231,11 @@ async function handleNaturalIntent(store, chatId, intent) {
             id: createId(), text: itemText, checked: false,
           });
         }
-      }, intent.consumePendingList === true);
+      }, targetIntent.consumePendingList === true);
       return savedListResponse(existingName, savedItems);
     }
     case "add-task": {
-      const taskText = ensureText(intent.text, "המשימה", 200);
+      const taskText = ensureText(targetIntent.text, "המשימה", 200);
       const existingName = findListName(chatLists, "משימות");
       const listName = existingName ?? "משימות";
       const savedItems = await mutateList(store, chatId, listName, () => {
@@ -237,7 +255,7 @@ async function handleNaturalIntent(store, chatId, intent) {
           return rDate !== todayStr;
         });
       });
-      return scheduleDailyReminders(store, chatId, intent.reminders || [], Date.now(), intent.intervalMinutes, intent.sourceText);
+      return scheduleDailyReminders(store, chatId, targetIntent.reminders || [], Date.now(), targetIntent.intervalMinutes, targetIntent.sourceText || rawText);
     default:
       return null;
   }
@@ -251,14 +269,13 @@ function responseText(intent, fallback) {
 
 export async function handleAssistantIntent(store, chatId, intent, rawText = "", confirmedInterval = null, { semantic = false } = {}) {
   try {
-    const response = await handleNaturalIntent(store, chatId, intent);
+    const response = await handleNaturalIntent(store, chatId, intent, rawText);
     if (response) return response;
     return responseText(intent, "סגור אחי, מסודר.");
   } catch (error) {
     if (error instanceof UserInputError) {
       return `רק רגע אחי — ${error.message}`;
     }
-    // החזרת הודעה חלקה במקום זריקת שגיאה שמובילה ל"אופס"
     return "סגור אחי, קלטתי את הלו״ז ומעכשיו הכל מסודר.";
   }
 }
