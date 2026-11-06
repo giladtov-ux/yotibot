@@ -258,7 +258,7 @@ async function processAssistantMessage(
     "help", "greeting", "thanks", "farewell", "small-talk", "tell-time", "tell-date"].includes(intent.type)) {
     return handleAssistantIntent(store, chatId, { type: "list-reminders" }, text);
   }
-  const intervalClarification = /^(?:מחר|היום|מחרתיים|(?:ב-)?\d{1,2}:\d{2}|\d+\s*פעמים)[.!?]*$/u.test(text);
+  const intervalClarification = /^(?:מחר|היום|מחרתיים|(?:ב[־-]?)?\d{1,2}:\d{2}|\d+\s*פעמים)[.!? ]*$/u.test(text);
   const previousInterval = intervalClarification
     ? context.recentConversation.filter(row => row.role === "user")
       .map(row => extractRequestedInterval(row.content ?? row.text)).filter(Boolean).at(-1)
@@ -295,13 +295,6 @@ async function processAssistantMessage(
     if (listName && (claimsDeletion || !isListConfirmationQuestion(intent.response ?? ""))) {
       return handleAssistantIntent(store, chatId, { type: "clear-list", listName }, rawText, previousInterval, { semantic: true });
     }
-    
-    // אם זו בקשת תזכורת לפי טקסט חופשי שהAI החזיר עליה תשובת שיחה רגילה, נאלץ להפעיל את פקודת התזכורת בפועל
-    const isReminderRequestText = /תזכיר|תזכורת|להזכיר/u.test(text);
-    if (isReminderRequestText && localIntent?.type === "reminder") {
-      return handleAssistantIntent(store, chatId, localIntent, text);
-    }
-
     const explicitAddition = /^(?:בבקשה\s+)?(?:תוסיף|תוסיפי|הוסף|הוסיפי|תכניס|תכניסי)\s+/u.test(text);
     const additionProgress = /(?:אני\s+(?:מוסיף|מוסיפה|מכניס|מכניסה|שומר|שומרת|רושם|רושמת)|(?:מוסיף|מוסיפה|מכניס|מכניסה)\s+(?:עכשיו|כרגע)|(?:אוסיף|אשמור|ארשום)\s+)/u.test(intent.response ?? "");
     const currentTaskAction = /^(?:סיימתי|עשיתי|גמרתי|סגרתי|תוריד|להוריד|תעיף|תמחק|מחק|תשנה|שנה|תעדכן|עדכן)(?:\s|$)/u.test(text);
